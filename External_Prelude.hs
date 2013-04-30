@@ -587,14 +587,15 @@ showsPrec4CurryList d cl =
 -- -------------
 
 external_d_C_ensureNotFree :: Curry a => a -> ConstStore -> a
-external_d_C_ensureNotFree x cs =
-  case try x of
-    Choice cd i a b  -> choiceCons cd i (external_d_C_ensureNotFree a cs)
-                                        (external_d_C_ensureNotFree b cs)
-    Narrowed cd i xs -> choicesCons cd i (map (flip external_d_C_ensureNotFree cs) xs)
-    Free cd i xs     -> narrows cs cd i (flip external_d_C_ensureNotFree cs) xs
-    Guard cd c e    -> guardCons cd c (external_d_C_ensureNotFree e (addCs c cs))
-    _            -> x
+external_d_C_ensureNotFree x cs = case try x of
+  Choice cd i a b  -> choiceCons cd i (external_d_C_ensureNotFree a cs)
+                                      (external_d_C_ensureNotFree b cs)
+  Narrowed cd i xs -> choicesCons cd i (map (flip external_d_C_ensureNotFree cs) xs)
+  Free cd i xs     -> guardCons cd (SuspendedC i C_Success) (narrows cs cd i id xs)
+--                    $  narrows cs cd i (flip external_d_C_ensureNotFree cs) xs
+--   Free cd i xs     -> narrows cs cd i (flip external_d_C_ensureNotFree cs) xs
+  Guard cd c e    -> guardCons cd c (external_d_C_ensureNotFree e (addCs c cs))
+  _            -> x
 
 external_d_C_failed :: NonDet a => ConstStore -> a
 external_d_C_failed _ = failCons 0 defFailInfo
