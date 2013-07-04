@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 import qualified Curry_Prelude as CP
 
 import FDData
@@ -15,43 +17,61 @@ domain vs l u i =
   in guardCons defCover (WrappedConstr [c]) C_Success
 
 external_d_C_prim_FD_plus :: CP.C_Int -> CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Int
-external_d_C_prim_FD_plus x y res cs | gnfCheck x && gnfCheck y = CP.d_OP_plus x y cs
-                                     | otherwise                = let c = wrapCs $ newArithConstr Plus x y res
-                                                                  in guardCons defCover (WrappedConstr [c]) res
+external_d_C_prim_FD_plus x y res cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) res
+  | otherwise            = CP.d_OP_plus x y cs
+ where
+  c = wrapCs $ newArithConstr Plus x y res
 
 external_d_C_prim_FD_minus :: CP.C_Int -> CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Int
-external_d_C_prim_FD_minus x y res cs | gnfCheck x && gnfCheck y = CP.d_OP_minus x y cs
-                                      | otherwise                = let c = wrapCs $ newArithConstr Minus x y res
-                                                                   in guardCons defCover (WrappedConstr [c]) res
+external_d_C_prim_FD_minus x y res cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) res
+  | otherwise            = CP.d_OP_minus x y cs
+ where
+  c = wrapCs $ newArithConstr Minus x y res
 
 external_d_C_prim_FD_times :: CP.C_Int -> CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Int
-external_d_C_prim_FD_times x y res cs | gnfCheck x && gnfCheck y = CP.d_OP_star x y cs
-                                      | otherwise                = let c = wrapCs $ newArithConstr Mult x y res
-                                                                   in guardCons defCover (WrappedConstr [c]) res
+external_d_C_prim_FD_times x y res cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) res 
+  | otherwise            = CP.d_OP_star x y cs
+ where
+  c = wrapCs $ newArithConstr Mult x y res
 
 external_d_C_prim_FD_equal :: CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Success
-external_d_C_prim_FD_equal x y cs | gnfCheck x && gnfCheck y = if xEqualY then C_Success else CP.d_C_failed cs
-                                  | otherwise                = let c = wrapCs $ newRelConstr Equal x y
-                                                               in guardCons defCover (WrappedConstr [c]) C_Success
-  where xEqualY = fromCurry $ CP.d_OP_eq_eq x y cs
+external_d_C_prim_FD_equal x y cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) C_Success
+  | xEqualY              = C_Success
+  | otherwise            = CP.d_C_failed cs
+ where 
+  xEqualY = fromCurry $ CP.d_OP_eq_eq x y cs
+  c       = wrapCs $ newRelConstr Equal x y
 
 external_d_C_prim_FD_notequal :: CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Success
-external_d_C_prim_FD_notequal x y cs | gnfCheck x && gnfCheck y = if xNotEqualY then C_Success else CP.d_C_failed cs
-                                     | otherwise                = let c = wrapCs $ newRelConstr Diff x y
-                                                                  in guardCons defCover (WrappedConstr [c]) C_Success
-  where xNotEqualY = fromCurry $ CP.d_C_not (CP.d_OP_eq_eq x y cs) cs
+external_d_C_prim_FD_notequal x y cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) C_Success
+  | xNotEqualY           = C_Success
+  | otherwise            = CP.d_C_failed cs
+ where
+  xNotEqualY = fromCurry $ CP.d_C_not (CP.d_OP_eq_eq x y cs) cs
+  c          = wrapCs $ newRelConstr Diff x y
 
 external_d_C_prim_FD_le :: CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Success
-external_d_C_prim_FD_le x y cs | gnfCheck x && gnfCheck y = if xLessY then C_Success else CP.d_C_failed cs
-                               | otherwise                = let c = wrapCs $ newRelConstr Less x y
-                                                            in guardCons defCover (WrappedConstr [c]) C_Success
-  where xLessY = fromCurry $ CP.d_OP_lt_eq x (CP.d_OP_minus y (CP.C_Int 1#) cs) cs
+external_d_C_prim_FD_le x y cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) C_Success
+  | xLessY               = C_Success
+  | otherwise            = CP.d_C_failed cs
+ where 
+  xLessY = fromCurry $ CP.d_OP_lt_eq x (CP.d_OP_minus y (CP.C_Int 1#) cs) cs
+  c      = wrapCs $ newRelConstr Less x y
 
 external_d_C_prim_FD_leq :: CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Success
-external_d_C_prim_FD_leq x y cs | gnfCheck x && gnfCheck y = if xLessEqualY then C_Success else CP.d_C_failed cs
-                                | otherwise                = let c = wrapCs $ newRelConstr LessEqual x y
-                                                             in guardCons defCover (WrappedConstr [c]) C_Success
-  where xLessEqualY = fromCurry $ CP.d_OP_lt_eq x y cs
+external_d_C_prim_FD_leq x y cs
+  | isFree x || isFree y = guardCons defCover (WrappedConstr [c]) C_Success
+  | xLessEqualY          = C_Success
+  | otherwise            = CP.d_C_failed cs
+ where 
+  xLessEqualY = fromCurry $ CP.d_OP_lt_eq x y cs
+  c           = wrapCs $ newRelConstr LessEqual x y
 
 external_d_C_prim_FD_ge :: CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Success
 external_d_C_prim_FD_ge x y cs = d_C_prim_FD_le y x cs
@@ -65,9 +85,12 @@ external_d_C_prim_allDifferent vs (CP.Choices_OP_List _ i@(FreeID _ _) _) cs = (
 
 allDifferent :: CP.OP_List CP.C_Int -> ID -> ConstStore -> CP.C_Success
 allDifferent vs i cs 
-  | gnfCheck vs = if allDiff (fromCurry vs) then C_Success else CP.d_C_failed cs
-  | otherwise   = let c = wrapCs $ FDAllDifferent (toFDList i vs)
-                  in guardCons defCover (WrappedConstr [c]) C_Success
+  | isFree vs || any isFree hvs = guardCons defCover (WrappedConstr [c]) C_Success
+  | allDiff (fromCurry vs)      = C_Success
+  | otherwise                   = CP.d_C_failed cs
+ where
+  hvs = toHaskellList id vs
+  c   = wrapCs $ FDAllDifferent (toFDList i vs)
 
 allDiff :: [Int] -> Bool
 allDiff []     = True
@@ -79,18 +102,20 @@ external_d_C_prim_sum vs res (CP.Choices_OP_List _ i@(FreeID _ _) _) cs = ((\vs1
 
 sumList :: CP.OP_List CP.C_Int -> CP.C_Int -> ID -> CP.C_Int
 sumList vs res i
-  | gnfCheck vs = toCurry (Prelude.sum (fromCurry vs :: [Int]))
-  | otherwise   = let c = wrapCs $ FDSum (toFDList i vs) (toCsExpr res)
-                  in guardCons defCover (WrappedConstr [c]) res
+  | isFree vs || any isFree hvs = guardCons defCover (WrappedConstr [c]) res
+  | otherwise                   = toCurry (Prelude.sum (fromCurry vs :: [Int]))
+ where
+  hvs = toHaskellList id vs
+  c   = wrapCs $ FDSum (toFDList i vs) (toCsExpr res)
 
 external_d_C_prim_labelingWith :: C_LabelingStrategy -> CP.OP_List CP.C_Int -> CP.OP_List CP.C_Int -> CP.OP_List CP.C_Int -> ConstStore -> CP.C_Success
 external_d_C_prim_labelingWith strategy vs@(CP.Choices_OP_List _ i@(FreeID _ _) _) _ (CP.Choices_OP_List _ j@(FreeID _ _) _) cs = ((\vs1 _ -> labeling strategy vs1 j i) $!! (CP.d_C_ensureSpine vs cs)) cs
 external_d_C_prim_labelingWith strategy vs (CP.Choices_OP_List _ i@(FreeID _ _) _) (CP.Choices_OP_List _ j@(FreeID _ _) _) cs = ((\vs1 _ -> labeling strategy vs1 j i) $!! (CP.d_C_ensureSpine vs cs)) cs
 
 labeling :: C_LabelingStrategy -> CP.OP_List CP.C_Int -> ID -> ID -> CP.C_Success
-labeling strategy vs j i =
-  let c = wrapCs $ FDLabeling (fromCurry strategy) (toFDList i vs) j
-  in guardCons defCover (WrappedConstr [c]) C_Success
+labeling strategy vs j i = guardCons defCover (WrappedConstr [c]) C_Success
+ where
+  c = wrapCs $ FDLabeling (fromCurry strategy) (toFDList i vs) j
 
 newArithConstr :: ArithOp -> CP.C_Int -> CP.C_Int -> CP.C_Int -> FDConstraint
 newArithConstr arithOp x y result = FDArith arithOp (toCsExpr x) (toCsExpr y) (toCsExpr result)
@@ -113,22 +138,11 @@ instance ConvertCurryHaskell C_LabelingStrategy LabelingStrategy where
   fromCurry C_EndsOut   = EndsOut
   fromCurry _           = error "KiCS2 error: LabelingStrategy data with no ground term"
 
+-- Convert to haskell list by converting list elements with given function
+toHaskellList :: (a -> b) -> CP.OP_List a -> [b]
+toHaskellList _ CP.OP_List        = []
+toHaskellList f (CP.OP_Cons x xs) = f x : toHaskellList f xs
+
 -- helper function to convert curry integer lists to lists of fd terms
 toFDList :: Constrainable a b => ID -> CP.OP_List a -> FDList b
-toFDList i vs = FDList i (toFDList' vs)
-  where
-   toFDList' CP.OP_List        = []
-   toFDList' (CP.OP_Cons v vs) = toCsExpr v : toFDList' vs
-
--- Typeclass for checking whether non-det value is in ground normal form or not
-class NonDet a => GNFChecker a where
-  gnfCheck :: a -> Bool
-  gnfCheck x = gnfCheck' (try x)
-    where gnfCheck' (Val _) = True
-          gnfCheck' _       = False
-
-instance GNFChecker CP.C_Int
-
-instance GNFChecker a => GNFChecker (CP.OP_List a) where
-  gnfCheck CP.OP_List = True
-  gnfCheck (CP.OP_Cons x xs) = gnfCheck x && gnfCheck xs
+toFDList i vs = FDList i (toHaskellList toCsExpr vs)
