@@ -342,14 +342,14 @@ instance Coverable C_Char where
   cover (Guard_C_Char cd cs x)   = Guard_C_Char (incCover cd) cs (cover x)
 
 instance FromDecisionTo C_Char where
-  fromDecision i ((ChooseN 0 1),_) = 
+  fromDecision i (ChooseN 0 1) = 
     do
      x3 <- lookupValue (leftID i)
      return (CurryChar x3)
-  fromDecision _ (NoDecision,j) = return (generate (supply j))
-  fromDecision i (ChooseLeft,_) = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
-  fromDecision i (ChooseRight,_) = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))
-  fromDecision _ ((LazyBind _),_) = error "Prelude.Char.fromDecision: No rule for LazyBind decision yet"
+  fromDecision i NoDecision   = return (generate (supply i))
+  fromDecision i ChooseLeft   = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
+  fromDecision i ChooseRight  = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))
+  fromDecision _ (LazyBind _) = error "Prelude.Char.fromDecision: No rule for LazyBind decision yet"
 
 
 primChar2CurryChar :: Char# -> BinInt
