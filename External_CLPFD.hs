@@ -109,11 +109,12 @@ sumList vs res i
   c   = wrapCs $ FDSum (toFDList i vs) (toCsExpr res)
 
 external_d_C_prim_labelingWith :: C_LabelingStrategy -> CP.OP_List CP.C_Int -> CP.OP_List CP.C_Int -> CP.OP_List CP.C_Int -> ConstStore -> CP.C_Success
-external_d_C_prim_labelingWith strategy vs@(CP.Choices_OP_List _ i@(FreeID _ _) _) _ (CP.Choices_OP_List _ j@(FreeID _ _) _) cs = ((\vs1 _ -> labeling strategy vs1 j i) $!! (CP.d_C_ensureSpine vs cs)) cs
-external_d_C_prim_labelingWith strategy vs (CP.Choices_OP_List _ i@(FreeID _ _) _) (CP.Choices_OP_List _ j@(FreeID _ _) _) cs = ((\vs1 _ -> labeling strategy vs1 j i) $!! (CP.d_C_ensureSpine vs cs)) cs
+external_d_C_prim_labelingWith strategy vs@(CP.Choices_OP_List _ i@(FreeID _ _) _) _ (CP.Choices_OP_List _ j@(FreeID _ _) _) cs = ((\vs1 cs1 -> labeling strategy vs1 j i cs1) $!! (CP.d_C_ensureSpine vs cs)) cs
+external_d_C_prim_labelingWith strategy vs (CP.Choices_OP_List _ i@(FreeID _ _) _) (CP.Choices_OP_List _ j@(FreeID _ _) _) cs = ((\vs1 cs1 -> labeling strategy vs1 j i cs1) $!! (CP.d_C_ensureSpine vs cs)) cs
 
-labeling :: C_LabelingStrategy -> CP.OP_List CP.C_Int -> ID -> ID -> CP.C_Success
-labeling strategy vs j i = guardCons defCover (WrappedConstr [c]) C_Success
+labeling :: C_LabelingStrategy -> CP.OP_List CP.C_Int -> ID -> ID -> ConstStore -> CP.C_Success
+labeling _        CP.OP_List _ _ cs = CP.d_C_failed cs
+labeling strategy vs j i _  = guardCons defCover (WrappedConstr [c]) C_Success
  where
   c = wrapCs $ FDLabeling (fromCurry strategy) (toFDList i vs) j
 
