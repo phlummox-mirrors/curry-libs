@@ -113,6 +113,7 @@ instance Unifiable (C_IORef a) where
   lazyBind i (Choices_C_IORef cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
   lazyBind _ (Fail_C_IORef cd info) = [Unsolvable info]
   lazyBind i (Guard_C_IORef _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  fromDecision _ _ = error "ERROR: No fromDecision for IORef"
 
 instance CP.Curry a => CP.Curry (C_IORef a) where
   (=?=) = error "(==) is undefined for IORefs"
@@ -124,9 +125,6 @@ instance Coverable (C_IORef a) where
   cover (Fail_C_IORef cd info)    = Fail_C_IORef (incCover cd) info
   cover (Guard_C_IORef cd cs x)   = Guard_C_IORef (incCover cd) cs (cover x)
   cover r@(C_IORef _)             = r
-
-instance FromDecisionTo (C_IORef a) where
-  fromDecision _ _ = error "ERROR: No fromDecision for IORef"
 
 instance ConvertCurryHaskell (C_IORef a) (IORef a) where
   fromCurry (C_IORef r) = r

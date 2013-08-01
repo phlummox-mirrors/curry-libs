@@ -50,10 +50,11 @@ instance Read (C_ValueSequence a) where
   readsPrec = error "SearchTree: ValueSequence: readsPrec"
 
 instance Unifiable (C_ValueSequence a) where
-  (=.=)      = error "SearchTree: ValueSequence: (=.=)"
-  (=.<=)     = error "SearchTree: ValueSequence: (=.<=)"
-  bind       = error "SearchTree: ValueSequence: bind"
-  lazyBind   = error "SearchTree: ValueSequence: lazyBind"
+  (=.=)        = error "SearchTree: ValueSequence: (=.=)"
+  (=.<=)       = error "SearchTree: ValueSequence: (=.<=)"
+  bind         = error "SearchTree: ValueSequence: bind"
+  lazyBind     = error "SearchTree: ValueSequence: lazyBind"
+  fromDecision = error "SearchTree: ValueSequence: fromDecision"
 
 instance NonDet (C_ValueSequence a) where
   choiceCons  = Choice_VS
@@ -75,7 +76,6 @@ instance NormalForm (C_ValueSequence a) where
  searchNF = error "SearchTree: ValueSequence: searchNF"
 
 instance FromDecisionTo (C_ValueSequence a) where
-  fromDecision _ _ = error "SearchTree: ValueSequence: fromDecision"
 
 external_d_C_emptyVS :: ConstStore -> C_ValueSequence a
 external_d_C_emptyVS _ = EmptyVS

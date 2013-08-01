@@ -174,6 +174,7 @@ instance Unifiable C_Float where
   lazyBind _ c@(Choices_C_Float cd i _) = error ("Prelude.Float.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _ (Fail_C_Float cd info) = [Unsolvable info]
   lazyBind i (Guard_C_Float cd cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind i e)))]
+  fromDecision _ _ = error "ERROR: No fromDecision for Float"
 
 instance Curry C_Float where
   (=?=) (Choice_C_Float cd i x y) z cs = narrow cd i ((x =?= z) cs) ((y =?= z) cs)
@@ -201,9 +202,6 @@ instance Coverable C_Float where
   cover (Choices_C_Float cd i xs) = Choices_C_Float (incCover cd) i (map cover xs)
   cover (Fail_C_Float cd info) = Fail_C_Float (incCover cd) info
   cover (Guard_C_Float cd cs x)   = Guard_C_Float (incCover cd) cs (cover x)
-
-instance FromDecisionTo C_Float where
-  fromDecision _ _ = error "ERROR: No fromDecision for Float"
 
 -- ---------------------------------------------------------------------------
 -- Char
@@ -306,6 +304,14 @@ instance Unifiable C_Char where
   lazyBind _ c@(Choices_C_Char cd i _) = error ("Prelude.Char.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _ (Fail_C_Char cd info) = [Unsolvable info]
   lazyBind i (Guard_C_Char cd cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind i e)))]
+  fromDecision i (ChooseN 0 1) = 
+    do
+     x3 <- lookupValue (leftID i)
+     return (CurryChar x3)
+  fromDecision i NoDecision   = return (generate (supply i))
+  fromDecision i ChooseLeft   = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
+  fromDecision i ChooseRight  = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))
+  fromDecision _ (LazyBind _) = error "Prelude.Char.fromDecision: No rule for LazyBind decision yet"
 
 instance Curry C_Char where
   (=?=) (Choice_C_Char cd i x y) z cs = narrow cd i ((x =?= z) cs) ((y =?= z) cs)
@@ -340,17 +346,6 @@ instance Coverable C_Char where
   cover (Choices_C_Char cd i xs) = Choices_C_Char (incCover cd) i (map cover xs)
   cover (Fail_C_Char cd info) = Fail_C_Char (incCover cd) info
   cover (Guard_C_Char cd cs x)   = Guard_C_Char (incCover cd) cs (cover x)
-
-instance FromDecisionTo C_Char where
-  fromDecision i (ChooseN 0 1) = 
-    do
-     x3 <- lookupValue (leftID i)
-     return (CurryChar x3)
-  fromDecision i NoDecision   = return (generate (supply i))
-  fromDecision i ChooseLeft   = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
-  fromDecision i ChooseRight  = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))
-  fromDecision _ (LazyBind _) = error "Prelude.Char.fromDecision: No rule for LazyBind decision yet"
-
 
 primChar2CurryChar :: Char# -> BinInt
 primChar2CurryChar c = primint2curryint (ord# c)

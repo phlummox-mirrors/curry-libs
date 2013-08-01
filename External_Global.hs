@@ -73,6 +73,7 @@ instance Unifiable (C_Global a) where
   lazyBind i (Choices_C_Global cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
   lazyBind _ (Fail_C_Global cd info) = [Unsolvable info]
   lazyBind i (Guard_C_Global _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  fromDecision _ _ = error "ERROR: No fromDecision for Global"
 
 instance CP.Curry a => CP.Curry (C_Global a) where
   (=?=) = error "(==) is undefined for Globals"
@@ -85,9 +86,6 @@ instance Coverable (C_Global a) where
   cover (Guard_C_Global cd cs x)   = Guard_C_Global (incCover cd) cs (cover x)     
   cover x@(C_Global_Temp _)        = x
   cover x@(C_Global_Pers _)        = x
-
-instance FromDecisionTo (C_Global a) where
-  fromDecision _ _ = error "ERROR: No fromDecision for Global"
 
 external_d_C_global :: CP.Curry a => a -> C_GlobalSpec -> ConstStore -> C_Global a
 external_d_C_global val C_Temporary _ = ref `seq` (C_Global_Temp ref)
