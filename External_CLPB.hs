@@ -20,9 +20,13 @@ external_d_C_prim_and b1 b2 result cs
 external_d_C_prim_or :: CP.C_Int -> CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Int
 external_d_C_prim_or b1 b2 result _
   | isFree b1 || isFree b2  = guardCons defCover (WrappedConstr [c]) result
-  | otherwise               = toCurry (((fromCurry b1) + (fromCurry b2)) `mod` 2 :: Int)
+  | otherwise               = toCurry (intOr (fromCurry b1) (fromCurry b2))
  where
   c = wrapCs $ newRelConstr Disjunction b1 b2 result
+
+intOr :: Int -> Int -> Int
+intOr 1 _ = 1
+intOr 0 x = x
 
 external_d_C_prim_sat :: CP.C_Int -> CP.C_Int -> ConstStore -> C_Success
 external_d_C_prim_sat b (CP.Choices_C_Int _ i _) _ = guardCons defCover (WrappedConstr [c]) C_Success

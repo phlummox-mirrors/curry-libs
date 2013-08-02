@@ -1,4 +1,4 @@
-module CLPB (true, false, neg, (.&&.), (.||.), satisfied) where
+module CLPB (Boolean, true, false, neg, (.&&.), (.||.), satisfied) where
 
 infixr 3 .&&.
 infixr 2 .||.
