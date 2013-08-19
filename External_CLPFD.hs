@@ -2,7 +2,7 @@
 
 import qualified Curry_Prelude as CP
 
-import FDData
+import Solver.Constraints
 
 -- External implementations for constraint functions:
 -- (curry list arguments have to be converted to haskell lists using toFDList)

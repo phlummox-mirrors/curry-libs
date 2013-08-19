@@ -1,6 +1,6 @@
 import qualified Curry_Prelude as CP
 
-import FDData
+import Solver.Constraints
 import PrimTypes
 
 external_d_C_prim_neg :: CP.C_Int -> CP.C_Int -> ConstStore -> CP.C_Int
