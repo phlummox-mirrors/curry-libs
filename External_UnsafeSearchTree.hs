@@ -1,6 +1,9 @@
+
+import System.IO
 import Control.Monad
+import Control.Parallel.TreeSearch
 import MonadSearch
-import GHC.Exts (Int (I#))
+import GHC.Exts (Int (I#), (<#))
 
 instance Monad C_SearchTree where
   return = C_Value
@@ -24,6 +27,14 @@ instance MonadSearch C_SearchTree where
   ssum             = Choices_C_SearchTree
   szero (I# d) _   = C_Fail (Curry_Prelude.C_Int d)
   constrainMSearch = Guard_C_SearchTree
+  var x _          = x
 
 external_d_C_someSearchTree :: NormalForm a => a -> Cover -> ConstStore -> C_SearchTree a
 external_d_C_someSearchTree = encapsulatedSearch
+
+
+external_d_C_lookupVarId :: Basics.NonDet a => a -> Cover -> ConstStore -> Curry_Prelude.C_Maybe (Curry_Prelude.C_Int)
+external_d_C_lookupVarId x _ _ = case try x of
+  Free _ i _   -> Curry_Prelude.C_Just (Basics.toCurry (Basics.getKey i))
+  _            -> Curry_Prelude.C_Nothing
+

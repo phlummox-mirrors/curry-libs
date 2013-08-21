@@ -4,13 +4,18 @@
 --- This module implements **strong encapsulation** as discussed in
 --- [this paper](http://www.informatik.uni-kiel.de/~mh/papers/JFLP04_findall.html)
 ---
+--- Warning: In contrast to the SearchTree Module, free variables that
+---          are not bound in the encapsulated expression remain free!
+---          This may lead to non-determinism if such an escaped
+---          variable is bound later via pattern matching.
+---
 --- @author  Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version April 2013
+--- @version July 2013
 ------------------------------------------------------------------------------
 
-module SearchTree
+module UnsafeSearchTree
   ( SearchTree (..), someSearchTree, getSearchTree
-  , isDefined, showSearchTree, searchTreeSize
+  , isDefined, showSearchTree, searchTreeSize, isVar, identicalVars, varId
   , Strategy, dfsStrategy, bfsStrategy, idsStrategy, idsStrategyWith
   , allValuesDFS, allValuesBFS, allValuesIDS, allValuesIDSwith
   , ValueSequence, vsToList
@@ -23,6 +28,46 @@ import ValueSequence
 data SearchTree a = Value a
                   | Fail Int
                   | Or (SearchTree a) (SearchTree a)
+
+
+--- Tests whether the argument is a free variable
+--- This function is only meaningful when applied to
+--- a part of a result of an encapsulated expression
+--- if the argument stems from a `Value` node of
+--- a SearchTree
+
+isVar :: a -> Bool
+isVar x = maybe False (const True) (lookupVarId x)
+
+--- Tests whether both arguments are identical free variables.
+--- This function is only meaningful when applied to
+--- parts of a result of an encapsulated expression
+--- if the argument stems from a `Value` node of
+--- a SearchTree
+
+identicalVars :: a -> a -> Bool
+identicalVars x y =
+  maybe False (\xi -> maybe False (==xi) (lookupVarId y)) (lookupVarId x)
+
+--- Returns the unique identifier of a free variable,
+--- if the argument was not a free variable, otherwise an error is raised.
+--- This function is only meaningful when applied to
+--- a part of a result of an encapsulated expression
+--- if the argument stems from a `Value` node of
+--- a SearchTree
+varId :: a -> Int
+varId x = maybe (error "UnsafeSearchTree.varId: argument not a variable")
+                id
+                (lookupVarId x)
+
+--- Returns the unique identifier of a free variable
+--- or Nothing, if the argument was not a free variable.
+--- This function is only useful when applied to
+--- a part of a result of a encapsulated expression
+--- if the argument stems from a `Value` node of
+--- a SearchTree
+lookupVarId :: a -> Maybe Int
+lookupVarId external
 
 type Strategy a = SearchTree a -> ValueSequence a
 
