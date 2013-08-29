@@ -78,30 +78,30 @@ instance NonDet b => Curry (a -> b) where
 -- ---------------------------------------------------------------------------
 
 instance Curry_Prelude.Curry C_Int where
-  (=?=) (Choice_C_Int cd i x y) z cs = narrow cd i ((x =?= z) cs) ((y =?= z) cs)
-  (=?=) (Choices_C_Int cd i xs) y cs = narrows cs cd i (\x -> (x =?= y) cs) xs
-  (=?=) (Guard_C_Int cd c x) y cs = guardCons cd c ((x =?= y) (addCs c cs))
-  (=?=) (Fail_C_Int cd info) _ _ = failCons cd info
-  (=?=) z (Choice_C_Int cd i x y) cs = narrow cd i ((z =?= x) cs) ((z =?= y) cs)
-  (=?=) y (Choices_C_Int cd i xs) cs = narrows cs cd i (\x -> (y =?= x) cs) xs
-  (=?=) y (Guard_C_Int cd c x) cs = guardCons cd c ((y =?= x) (addCs c cs))
-  (=?=) _ (Fail_C_Int cd info) _ = failCons cd info
-  (=?=) (C_Int      x1) (C_Int      y1) _ = toCurry (x1 ==# y1)
-  (=?=) (C_Int      x1) (C_CurryInt y1) cs = ((primint2curryint x1) =?= y1) cs
-  (=?=) (C_CurryInt x1) (C_Int      y1) cs = (x1 =?= (primint2curryint y1)) cs
-  (=?=) (C_CurryInt x1) (C_CurryInt y1) cs = (x1 =?= y1) cs
-  (<?=) (Choice_C_Int cd i x y) z cs = narrow cd i ((x <?= z) cs) ((y <?= z) cs)
-  (<?=) (Choices_C_Int cd i xs) y cs = narrows cs cd i (\x -> (x<?= y) cs) xs
-  (<?=) (Guard_C_Int cd c x) y cs = guardCons cd c ((x <?= y) (addCs c cs))
-  (<?=) (Fail_C_Int cd info) _ _ = failCons cd info
-  (<?=) z (Choice_C_Int cd i x y) cs = narrow cd i ((z <?= x) cs) ((z <?= y) cs)
-  (<?=) y (Choices_C_Int cd i xs) cs = narrows cs cd i (\x -> (y <?= x) cs) xs
-  (<?=) y (Guard_C_Int cd c x) cs = guardCons cd c ((y <?= x) (addCs c cs))
-  (<?=) _ (Fail_C_Int cd info) _ = failCons cd info
-  (<?=) (C_Int      x1) (C_Int      y1) _ = toCurry (x1 <=# y1)
-  (<?=) (C_Int      x1) (C_CurryInt y1) cs = ((primint2curryint x1) `d_C_lteqInteger` y1) cs
-  (<?=) (C_CurryInt x1) (C_Int      y1) cs = (x1 `d_C_lteqInteger` (primint2curryint y1)) cs
-  (<?=) (C_CurryInt x1) (C_CurryInt y1) cs = (x1 `d_C_lteqInteger` y1) cs
+  (=?=) (Choice_C_Int d i x y) z cd cs = narrow d i ((x =?= z) cd cs) ((y =?= z) cd cs)
+  (=?=) (Choices_C_Int d i xs) y cd cs = narrows cs d i (\x -> (x =?= y) cd cs) xs
+  (=?=) (Guard_C_Int d c x) y cd cs = guardCons d c ((x =?= y) cd $! (addCs c cs))
+  (=?=) (Fail_C_Int d info) _ _ _ = failCons d info
+  (=?=) z (Choice_C_Int d i x y) cd cs = narrow d i ((z =?= x) cd cs) ((z =?= y) cd cs)
+  (=?=) y (Choices_C_Int d i xs) cd cs = narrows cs d i (\x -> (y =?= x) cd cs) xs
+  (=?=) y (Guard_C_Int d c x) cd cs = guardCons d c ((y =?= x) cd $! (addCs c cs))
+  (=?=) _ (Fail_C_Int d info) _ _ = failCons d info
+  (=?=) (C_Int      x1) (C_Int      y1) _ _ = toCurry (x1 ==# y1)
+  (=?=) (C_Int      x1) (C_CurryInt y1) cd cs = ((primint2curryint x1) =?= y1) cd cs
+  (=?=) (C_CurryInt x1) (C_Int      y1) cd cs = (x1 =?= (primint2curryint y1)) cd cs
+  (=?=) (C_CurryInt x1) (C_CurryInt y1) cd cs = (x1 =?= y1) cd cs
+  (<?=) (Choice_C_Int d i x y) z cd cs = narrow d i ((x <?= z) cd cs) ((y <?= z) cd cs)
+  (<?=) (Choices_C_Int d i xs) y cd cs = narrows cs d i (\x -> (x<?= y) cd cs) xs
+  (<?=) (Guard_C_Int d c x) y cd cs = guardCons d c ((x <?= y) cd $! (addCs c cs))
+  (<?=) (Fail_C_Int d info) _ _ _ = failCons d info
+  (<?=) z (Choice_C_Int d i x y) cd cs = narrow d i ((z <?= x) cd cs) ((z <?= y) cd cs)
+  (<?=) y (Choices_C_Int d i xs) cd cs = narrows cs d i (\x -> (y <?= x) cd cs) xs
+  (<?=) y (Guard_C_Int d c x) cd cs = guardCons d c ((y <?= x) cd $! (addCs c cs))
+  (<?=) _ (Fail_C_Int d info) _ _ = failCons d info
+  (<?=) (C_Int      x1) (C_Int      y1) _ _ = toCurry (x1 <=# y1)
+  (<?=) (C_Int      x1) (C_CurryInt y1) cd cs = ((primint2curryint x1) `d_C_lteqInteger` y1) cd cs
+  (<?=) (C_CurryInt x1) (C_Int      y1) cd cs = (x1 `d_C_lteqInteger` (primint2curryint y1)) cd cs
+  (<?=) (C_CurryInt x1) (C_CurryInt y1) cd cs = (x1 `d_C_lteqInteger` y1) cd cs
 
 -- ---------------------------------------------------------------------------
 -- Float
@@ -173,7 +173,7 @@ instance Unifiable C_Float where
   lazyBind _  _ c@(Choices_C_Float _ i _) = error ("Prelude.Float.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _  _ (Fail_C_Float _ info) = [Unsolvable info]
   lazyBind cd  i (Guard_C_Float _ cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind cd i e)))]
-  fromDecision _ _ = error "ERROR: No fromDecision for Float"
+  fromDecision _ _ _ = error "ERROR: No fromDecision for Float"
 
 instance Curry C_Float where
   (=?=) (Choice_C_Float d i x y) z cd cs = narrow d i ((x =?= z) cd cs) ((y =?= z) cd cs)
@@ -296,14 +296,14 @@ instance Unifiable C_Char where
   lazyBind _  _ c@(Choices_C_Char _ i _) = error ("Prelude.Char.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _  _ (Fail_C_Char _ info) = [Unsolvable info]
   lazyBind cd i (Guard_C_Char _ cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind cd i e)))]
-  fromDecision i (ChooseN 0 1) = 
+  fromDecision cd i (ChooseN 0 1) = 
     do
-     x3 <- lookupValue (leftID i)
+     x3 <- lookupValue cd (leftID i)
      return (CurryChar x3)
-  fromDecision i NoDecision   = return (generate (supply i))
-  fromDecision i ChooseLeft   = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
-  fromDecision i ChooseRight  = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))
-  fromDecision _ (LazyBind _) = error "Prelude.Char.fromDecision: No rule for LazyBind decision yet"
+  fromDecision cd i NoDecision   = return (generate (supply i) cd)
+  fromDecision _  i ChooseLeft   = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
+  fromDecision _  i ChooseRight  = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))
+  fromDecision _  _ (LazyBind _) = error "Prelude.Char.fromDecision: No rule for LazyBind decision yet"
 
 instance Curry C_Char where
   (=?=) (Choice_C_Char d i x y) z cd cs = narrow d i ((x =?= z) cd cs) ((y =?= z) cd cs)
@@ -368,7 +368,7 @@ instance ConvertCurryHaskell C_Bool Bool where
 
   fromCurry C_True  = True
   fromCurry C_False = False
-  fromCurry _       = error "KiCS2 error: Float data with no ground term"
+  fromCurry _       = error "KiCS2 error: Bool data with no ground term"
 
 instance ConvertCurryHaskell OP_Unit () where
   toCurry ()  = OP_Unit

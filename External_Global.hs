@@ -82,7 +82,7 @@ instance Unifiable (C_Global a) where
   lazyBind _ _ (Fail_C_Global cd info) = [Unsolvable info]
   lazyBind cd i (Guard_C_Global _ cs e) 
     = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
-  fromDecision _ _ = error "ERROR: No fromDecision for Global"
+  fromDecision _ _ _ = error "ERROR: No fromDecision for Global"
 
 instance CP.Curry a => CP.Curry (C_Global a) where
   (=?=) = error "(==) is undefined for Globals"
