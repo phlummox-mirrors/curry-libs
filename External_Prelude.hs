@@ -299,7 +299,9 @@ instance Unifiable C_Char where
   fromDecision cd i (ChooseN 0 1) = 
     do
      x3 <- lookupValue cd (leftID i)
-     return (CurryChar x3)
+     if (isFree x3)
+        then (return (generate (supply i) cd))
+        else (return (CurryChar x3))
   fromDecision cd i NoDecision   = return (generate (supply i) cd)
   fromDecision _  i ChooseLeft   = error ("Prelude.Char.fromDecision: ChooseLeft decision for free ID: " ++ (show i))
   fromDecision _  i ChooseRight  = error ("Prelude.Char.fromDecision: ChooseRight decision for free ID: " ++ (show i))

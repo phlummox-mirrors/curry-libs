@@ -4,9 +4,10 @@
 CYMAKEPARAMS = --extended --no-verb --no-warn --no-overlap-warn -i. -imeta
 
 # directory for HTML documentation files:
-DOCDIR=CDOC
+# LIBDOCDIR = $(DOCDIR)/html
+LIBDOCDIR := CDOC
 # directory for LaTeX documentation files:
-TEXDOCDIR=TEXDOC
+TEXDOCDIR := $(DOCDIR)/src/lib
 
 # replacement stuff
 comma     := ,
@@ -17,43 +18,63 @@ add_subdir = $(dir $(file)).curry/$(notdir $(file))
 # a b c -> a, b, c
 comma_sep  = $(subst $(space),$(comma)$(space),$(1))
 
-ALL_CURRY     = $(wildcard *.curry) $(wildcard meta/*.curry)
-LIB_CURRY     = $(filter-out $(EXCLUDES), $(ALL_CURRY))
+LIB_CURRY     = $(filter-out $(EXCLUDES), $(wildcard *.curry meta/*.curry))
 LIB_FCY       = $(foreach file, $(LIB_CURRY:.curry=.fcy), $(add_subdir))
 LIB_ACY       = $(foreach file, $(LIB_CURRY:.curry=.acy), $(add_subdir))
-LIB_HTML      = $(LIB_CURRY:.curry=.html)
-LIB_TEX       = $(LIB_CURRY:.curry=.tex)
-# lib names without meta/ prefix
+# lib names without directory prefix
 LIB_NAMES     = $(basename $(notdir $(LIB_CURRY)))
+LIB_HTML      = $(foreach lib, $(LIB_NAMES), $(LIBDOCDIR)/$(lib).html)
+LIB_TEX       = $(foreach lib, $(LIB_NAMES), $(TEXDOCDIR)/$(lib).tex)
 HS_LIB_NAMES  = $(call comma_sep,$(LIB_NAMES:%=Curry_%))
 
-ALLLIBS  = AllLibraries.curry
-MAINGOAL = Curry_Main_Goal.curry
-EXCLUDES = $(ALLLIBS) $(MAINGOAL)
+ALLLIBS       = AllLibraries.curry
+EXCLUDES      = $(ALLLIBS) Curry_Main_Goal.curry
 
 PACKAGE       = kics2-libraries
 CABAL_FILE    = $(PACKAGE).cabal
-# lib dependencies as comma separated list
 CABAL_LIBDEPS = $(call comma_sep,$(LIBDEPS))
 
 ########################################################################
 # support for global installation
 ########################################################################
 
+.PHONY: install
+install: $(CABAL_FILE)
+	$(MAKE) compile
+	$(CABAL_INSTALL)
+
 # compile all libraries:
-.PHONY: compilelibs
-compilelibs: $(ALLLIBS)
+.PHONY: compile
+compile: $(ALLLIBS)
 	"${REPL}" ${REPL_OPTS} :set path ${LIBDIR}:${LIBDIR}/meta :l $< :eval main :quit
-#	$(BINDIR)/cleancurry $(basename $<)
+
+.PHONY: all
+all: fcy acy
+
+.PHONY: fcy
+fcy: $(LIB_FCY)
+
+.PHONY: acy
+acy: $(LIB_ACY)
+
+.PHONY: unregister
+unregister:
+	-$(GHC_UNREGISTER) $(PACKAGE)-$(VERSION)
+
+# clean all generated files
+.PHONY: cleanall
+cleanall:
+	rm -rf "$(LIBDOCDIR)"
+	rm -rf "$(TEXDOCDIR)"
+	rm -rf dist
+	rm -f $(CABAL_FILE)
+	$(CLEANCURRY)
+	cd meta && $(CLEANCURRY)
 
 $(ALLLIBS): $(LIB_CURRY) Makefile
 	rm -f $@
 	for i in $(LIB_NAMES) ; do echo "import $$i" >> $@ ; done
 	echo "main = 42" >> $@
-
-.PHONY: unregister
-unregister:
-	-$(GHC_UNREGISTER) $(PACKAGE)-$(VERSION)
 
 ${CABAL_FILE}:../Makefile Makefile
 	echo "Name:           $(PACKAGE)"                             > $@
@@ -76,29 +97,14 @@ ${CABAL_FILE}:../Makefile Makefile
 	echo "  Exposed-modules: $(HS_LIB_NAMES)"                    >> $@
 	echo "  hs-source-dirs: ./.curry/kics2, ./meta/.curry/kics2" >> $@
 
-.PHONY: installlibs
-installlibs : ${CABAL_FILE} ${ALLLIBS}
-	$(CABAL_INSTALL)
-
-.PHONY: all
-all: fcy acy
-
-.PHONY: fcy
-fcy:
-	${MAKE} $(LIB_FCY)
-
-.PHONY: acy
-acy:
-	${MAKE} $(LIB_ACY)
-
-# generate all FlatCurry files in subdirectory .curry:
+# generate all FlatCurry files in subdirectory .curry
 .curry/%.fcy: %.curry
 	"${CYMAKE}" --flat ${CYMAKEPARAMS} $*
 
 meta/.curry/%.fcy: meta/%.curry
 	"${CYMAKE}" --flat ${CYMAKEPARAMS} $*
 
-# generate all AbstractCurry files in subdirectory .curry:
+# generate all AbstractCurry files in subdirectory .curry
 .curry/%.acy: %.curry
 	"${CYMAKE}" --acy ${CYMAKEPARAMS} $*
 
@@ -107,57 +113,35 @@ meta/.curry/%.acy: meta/%.curry
 
 ##############################################################################
 # create HTML documentation files for system libraries
+##############################################################################
+
 .PHONY: doc
 doc: $(LIB_CURRY)
-	@mkdir -p "${DOCDIR}"
-	@cd "${DOCDIR}" && rm -f meta DOINDEX && ln -s . meta
-	@cd "${DOCDIR}" && ${MAKE} -f ../Makefile $(LIB_HTML)
-	@if [ -f "${DOCDIR}/DOINDEX" ] ; then ${MAKE} htmlindex ; fi
-	@cd "${DOCDIR}" && rm -f meta DOINDEX
-
-.PHONY: htmlindex
-htmlindex: $(CURRYDOC)
+	mkdir -p "$(LIBDOCDIR)"
+	$(MAKE) $(LIB_HTML)
 	@echo "Generating index pages for Curry libraries:"
 	@echo $(LIB_NAMES)
-	@"$(CURRYDOC)" --onlyindexhtml "${DOCDIR}" $(LIB_NAMES)
+	"$(CURRYDOC)" --onlyindexhtml "$(LIBDOCDIR)" $(LIB_NAMES)
 
-# generate individual documentations for libraries:
-%.html: ../%.curry $(CURRYDOC)
-	@touch DOINDEX
-	cd .. && "$(CURRYDOC)" --noindexhtml "${DOCDIR}" $*
+# generate individual documentations for libraries
+$(LIBDOCDIR)/%.html: %.curry
+	"$(CURRYDOC)" --noindexhtml "$(LIBDOCDIR)" $*
 
-meta/%.html: ../meta/%.curry $(CURRYDOC)
-	@touch DOINDEX
-	cd .. && "$(CURRYDOC)" --noindexhtml "${DOCDIR}" $*
+$(LIBDOCDIR)/%.html: meta/%.curry
+	"$(CURRYDOC)" --noindexhtml "$(LIBDOCDIR)" $*
 
 ##############################################################################
 # create LaTeX documentation files for system libraries
+##############################################################################
+
 .PHONY: texdoc
 texdoc: $(LIB_CURRY)
-	@mkdir -p "${TEXDOCDIR}"
-	@if [ ! -f "${TEXDOCDIR}/LAST" ] ; then touch "${TEXDOCDIR}/LAST" ; fi
-	@cd "${TEXDOCDIR}" && rm -f meta && ln -s . meta
-	@cd "${TEXDOCDIR}" && ${MAKE} -f ../Makefile $(LIB_TEX)
-	@cd "${TEXDOCDIR}" && rm -f meta
+	mkdir -p "$(TEXDOCDIR)"
+	$(MAKE) $(LIB_TEX)
 
-# generate individual LaTeX documentations for libraries:
-%.tex: ../%.curry $(CURRYDOC)
-	cd .. && "$(CURRYDOC)" --tex "${TEXDOCDIR}" $*
-	touch LAST
+# generate individual LaTeX documentations for libraries
+$(TEXDOCDIR)/%.tex: %.curry
+	"$(CURRYDOC)" --tex "$(TEXDOCDIR)" $*
 
-meta/%.tex: ../meta/%.curry $(CURRYDOC)
-	cd .. && "$(CURRYDOC)" --tex "${TEXDOCDIR}" $*
-	touch LAST
-
-$(CURRYDOC):
-	$(MAKE) -f ../Makefile currydoc
-
-# clean all generated files
-.PHONY: clean
-clean:
-	rm -f "${DOCDIR}"/*
-	rm -f "${TEXDOCDIR}"/*
-	rm -rf dist
-	rm -f ${CABAL_FILE}
-	$(CLEANCURRY)
-	cd meta && $(CLEANCURRY)
+$(TEXDOCDIR)/%.tex: meta/%.curry
+	"$(CURRYDOC)" --tex "$(TEXDOCDIR)" $*
