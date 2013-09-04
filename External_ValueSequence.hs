@@ -19,10 +19,11 @@ instance Read (C_ValueSequence a) where
   readsPrec = error "SearchTree: ValueSequence: readsPrec"
 
 instance Unifiable (C_ValueSequence a) where
-  (=.=)      = error "SearchTree: ValueSequence: (=.=)"
-  (=.<=)     = error "SearchTree: ValueSequence: (=.<=)"
-  bind       = error "SearchTree: ValueSequence: bind"
-  lazyBind   = error "SearchTree: ValueSequence: lazyBind"
+  (=.=)        = error "SearchTree: ValueSequence: (=.=)"
+  (=.<=)       = error "SearchTree: ValueSequence: (=.<=)"
+  bind         = error "SearchTree: ValueSequence: bind"
+  lazyBind     = error "SearchTree: ValueSequence: lazyBind"
+  fromDecision = error "SearchTree: ValueSequence: fromDecision"
 
 instance NonDet (C_ValueSequence a) where
   choiceCons  = Choice_VS

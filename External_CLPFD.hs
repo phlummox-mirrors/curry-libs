@@ -1,8 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 import qualified Curry_Prelude as CP
+import Curry_List (d_C_sum)
 
 import Solver.Constraints
+import Solver.MCPUtils (allDifferent)
 
 -- External implementations for constraint functions:
 -- (curry list arguments have to be converted to haskell lists using toFDList)
@@ -14,11 +16,9 @@ cond p x y cd cs
   | otherwise               = CP.d_C_failed cd cs
 
 external_d_C_prim_domain :: CP.OP_List CP.C_Int -> CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Success
-external_d_C_prim_domain vs l u cd cs = narrowIfFree2 vs l matchThird matchThird cd cs
- where
-  matchThird vs' l' cd' cs' = narrowIfFree u contFree contFree cd' cs'
-   where 
-    contFree u' cd'' _ = mkGuardExt cd'' [wrapCs (FDDomain (toFDList vs') (toCsExpr l') (toCsExpr u'))] C_Success
+external_d_C_prim_domain vs l u cd cs = narrowIfFree2 l u cont cont cd cs
+ where 
+  cont l' u' cd' _ = mkGuardExt cd' [wrapCs (FDDomain (toFDList vs) (toCsExpr l') (toCsExpr u'))] C_Success
 
 external_d_C_prim_FD_plus :: CP.C_Int -> CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
 external_d_C_prim_FD_plus x y result cd cs = narrowIfFree2 x y contFree CP.d_OP_plus cd cs
@@ -62,33 +62,24 @@ external_d_C_prim_FD_geq :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_
 external_d_C_prim_FD_geq x y cd cs = d_C_prim_FD_leq y x cd cs
 
 external_d_C_prim_allDifferent :: CP.OP_List CP.C_Int -> Cover -> ConstStore -> CP.C_Success
-external_d_C_prim_allDifferent vs cd cs = narrowIfFree vs contFree contFree cd cs
+external_d_C_prim_allDifferent vs cd cs
+  | any isFree hvs                       = mkGuardExt cd [wrapCs (FDAllDifferent (toFDList vs))] C_Success
+  | allDifferent (fromCurry vs :: [Int]) = C_Success
+  | otherwise                            = CP.d_C_failed cd cs
  where
-  contFree vs' cd' cs'
-    | isFree vs' || any isFree hvs = mkGuardExt cd' [wrapCs (FDAllDifferent (toFDList vs))] C_Success
-    | allDiff (fromCurry vs')      = C_Success
-    | otherwise                    = CP.d_C_failed cd' cs'
-   where
-     hvs = toHaskellList id vs
-
-allDiff :: [Int] -> Bool
-allDiff []     = True
-allDiff (v:vs) = all (/= v) vs && allDiff vs
+  hvs = toHaskellList id vs
 
 external_d_C_prim_sum :: CP.OP_List CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
-external_d_C_prim_sum vs result cd cs = narrowIfFree vs contFree contFree cd cs
+external_d_C_prim_sum vs result cd cs 
+  | any isFree hvs = mkGuardExt cd [wrapCs (FDSum (toFDList vs) (toCsExpr result))] result
+  | otherwise      = d_C_sum vs cd cs
  where
-  contFree vs' cd' _
-    | isFree vs' || any isFree hvs = mkGuardExt cd' [wrapCs (FDSum (toFDList vs) (toCsExpr result))] result
-    | otherwise                    = toCurry (Prelude.sum (fromCurry vs :: [Int]))
-   where
-    hvs = toHaskellList id vs
+  hvs = toHaskellList id vs
 
 external_d_C_prim_labelingWith :: C_LabelingStrategy -> CP.OP_List CP.C_Int -> CP.OP_List CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_labelingWith _ CP.OP_List _ cd cs = CP.d_C_failed cd cs
-external_d_C_prim_labelingWith strategy vs (CP.Choices_OP_List _ j@(FreeID _ _) _) cd cs = narrowIfFree vs contFree contFree cd cs
- where
-  contFree vs' cd' cs' = mkGuardExt cd' [wrapCs (FDLabeling (fromCurry strategy) (toFDList vs') j)] C_Success
+external_d_C_prim_labelingWith strategy vs (CP.Choices_OP_List _ j@(FreeID _ _) _) cd cs =
+  mkGuardExt cd [wrapCs (FDLabeling (fromCurry strategy) (toFDList vs) j)] C_Success
 
 newArithConstr :: ArithOp -> CP.C_Int -> CP.C_Int -> CP.C_Int -> FDConstraint
 newArithConstr arithOp x y result = FDArith arithOp (toCsExpr x) (toCsExpr y) (toCsExpr result)
