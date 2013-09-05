@@ -4,7 +4,6 @@ import qualified Curry_Prelude as CP
 import Curry_List (d_C_sum)
 
 import Solver.Constraints
-import Solver.MCPUtils (allDifferent)
 
 -- External implementations for constraint functions:
 -- (curry list arguments have to be converted to haskell lists using toFDList)
