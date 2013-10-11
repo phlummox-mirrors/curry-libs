@@ -10,7 +10,7 @@ data C_Global a
      = Choice_C_Global Cover ID (C_Global a) (C_Global a)
      | Choices_C_Global Cover ID ([C_Global a])
      | Fail_C_Global Cover FailInfo
-     | Guard_C_Global Cover Constraints (C_Global a)
+     | Guard_C_Global Cover WrappedConstraint (C_Global a)
      | C_Global_Temp (IORef a)  -- a temporary global
      | C_Global_Pers String     -- a persistent global with a given (file) name
 
@@ -73,15 +73,18 @@ instance Unifiable (C_Global a) where
   bind cd i (Choices_C_Global d j@(NarrowedID _ _) xs) 
     = [(ConstraintChoices d j (map (bind cd i) xs))]
   bind _ _ (Fail_C_Global _ info) = [Unsolvable info]
-  bind cd i (Guard_C_Global _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  bind cd i (Guard_C_Global _ c e) = case unwrapCs c of
+    Just cs -> (getConstrList cs) ++ (bind cd i e)
+    Nothing -> error "Global.bind: Called bind with a guard expression containing a non-equation constraint"
   lazyBind cd i (Choice_C_Global d j l r) 
     = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
   lazyBind cd i (Choices_C_Global d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
   lazyBind cd i (Choices_C_Global d j@(NarrowedID _ _) xs) 
     = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
   lazyBind _ _ (Fail_C_Global cd info) = [Unsolvable info]
-  lazyBind cd i (Guard_C_Global _ cs e) 
-    = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+  lazyBind cd i (Guard_C_Global _ c e) = case unwrapCs c of
+    Just cs -> (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+    Nothing -> error "Global.lazyBind: Called lazyBind with a guard expression containing a non-equation constraint"
   fromDecision _ _ _ = error "ERROR: No fromDecision for Global"
 
 instance CP.Curry a => CP.Curry (C_Global a) where

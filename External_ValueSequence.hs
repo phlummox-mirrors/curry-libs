@@ -8,7 +8,7 @@ data C_ValueSequence a = EmptyVS | Values (Curry_Prelude.OP_List a)
                        | FailVS (Curry_Prelude.C_Int)
                        | Choice_VS Cover ID (C_ValueSequence a) (C_ValueSequence a)
                        | Choices_VS Cover ID [C_ValueSequence a]
-                       | Guard_VS Cover Constraints (C_ValueSequence a)
+                       | Guard_VS Cover WrappedConstraint (C_ValueSequence a)
 
 instance Curry_Prelude.Curry (C_ValueSequence a) where
 

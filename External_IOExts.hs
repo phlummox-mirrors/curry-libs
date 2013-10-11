@@ -59,7 +59,7 @@ data C_IORef a
     = Choice_C_IORef Cover ID (C_IORef a) (C_IORef a)
     | Choices_C_IORef Cover ID ([C_IORef a])
     | Fail_C_IORef Cover FailInfo
-    | Guard_C_IORef Cover  Constraints (C_IORef a)
+    | Guard_C_IORef Cover  WrappedConstraint (C_IORef a)
     | C_IORef (IORef a)
 
 instance Show (C_IORef a) where
@@ -112,12 +112,16 @@ instance Unifiable (C_IORef a) where
   bind cd i (Choices_C_IORef d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
   bind cd i (Choices_C_IORef d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
   bind _  _ (Fail_C_IORef cd info) = [Unsolvable info]
-  bind cd i (Guard_C_IORef _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  bind cd i (Guard_C_IORef _ c e) = case unwrapCs c of
+    Just cs -> (getConstrList cs) ++ (bind cd i e)
+    Nothing -> error "IORef.bind: Called bind with a guard expression containing a non-equation constraint"
   lazyBind cd i (Choice_C_IORef d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
   lazyBind cd i (Choices_C_IORef d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
   lazyBind cd i (Choices_C_IORef d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
   lazyBind _  _ (Fail_C_IORef cd info) = [Unsolvable info]
-  lazyBind cd i (Guard_C_IORef _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+  lazyBind cd i (Guard_C_IORef _ c e) = case unwrapCs c of
+    Just cs -> (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+    Nothing -> error "IORef.lazyBind: Called lazyBind with a guard expression containing a non-equation constraint"
   fromDecision _ _ _ = error "ERROR: No fromDecision for IORef"
 
 instance CP.Curry a => CP.Curry (C_IORef a) where
