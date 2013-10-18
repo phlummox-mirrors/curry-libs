@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, MagicHash, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 
 import qualified Control.Exception as C
 
