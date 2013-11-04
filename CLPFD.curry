@@ -144,7 +144,7 @@ prim_labeling external
 
 -- generate list of n free variables
 genVars :: Int -> [Int]
-genVars n = if n==0 then [] else var : genVars (n-1)
+genVars n = if n<=0 then [] else var : genVars (n-1)
  where var free
 
 -- end of library CLPFD
