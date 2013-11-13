@@ -15,6 +15,7 @@ module ParallelSearch
   ( getAllValues
   , getOneValue
   , parSearch
+  , evalSearch
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -29,6 +30,10 @@ getOneValue str x = do
 
 data Strategy _ -- precise structure internally defined
 
---- 
+--- Parallel strategy using Haskells par from Control.Parallel.
 parSearch :: Strategy a
 parSearch external
+
+--- Parallel strategy using Haskells Eval monad.
+evalSearch :: Strategy a
+evalSearch external

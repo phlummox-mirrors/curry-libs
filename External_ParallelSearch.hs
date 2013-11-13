@@ -1,6 +1,7 @@
 import Control.Monad.SearchTree
 import MonadSearch
 import Strategies
+import Control.Parallel.Strategies
 import qualified Curry_Prelude as CP
 
 external_d_C_getAllValues :: NormalForm a =>
@@ -22,3 +23,6 @@ data C_Strategy a
 
 external_d_C_parSearch :: Cover -> ConstStore -> C_Strategy a
 external_d_C_parSearch _ _ = Strategy (return . parSearch)
+
+external_d_C_evalSearch :: Cover -> ConstStore -> C_Strategy a
+external_d_C_evalSearch _ _ = Strategy (return . evalSearch)
