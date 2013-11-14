@@ -16,6 +16,7 @@ module ParallelSearch
   , getOneValue
   , parSearch
   , evalSearch
+  , fairSearch
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -37,3 +38,7 @@ parSearch external
 --- Parallel strategy using Haskells Eval monad.
 evalSearch :: Strategy a
 evalSearch external
+
+--- Parallel strategy providing a fair search with concurrency.
+fairSearch :: Strategy a
+fairSearch external

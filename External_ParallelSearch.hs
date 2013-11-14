@@ -26,3 +26,6 @@ external_d_C_parSearch _ _ = Strategy (return . parSearch)
 
 external_d_C_evalSearch :: Cover -> ConstStore -> C_Strategy a
 external_d_C_evalSearch _ _ = Strategy (return . evalSearch)
+
+external_d_C_fairSearch :: Cover -> ConstStore -> C_Strategy a
+external_d_C_fairSearch _ _ = Strategy fairSearch
