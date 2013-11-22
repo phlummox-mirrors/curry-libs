@@ -1,4 +1,5 @@
 import Control.Monad.SearchTree
+import Control.Monad
 import MonadSearch
 import MonadList
 import Strategies
@@ -19,6 +20,20 @@ external_d_C_getAllValues sy x c s = fromIO $ do
  where
   hlist2clist [] = CP.OP_List
   hlist2clist (x:xs) = CP.OP_Cons x $ hlist2clist xs
+
+external_d_C_getOneValue :: NormalForm a =>
+                            C_Strategy a
+                         -> a
+                         -> Cover
+                         -> ConstStore
+                         -> CP.C_IO (CP.C_Maybe a)
+external_d_C_getOneValue sy x c s = fromIO $ do
+  let tree = encapsulatedSearch x c s
+  list <- getStrategy sy tree
+  liftM hmaybe2cmaybe $ listIOToMaybe list
+ where
+  hmaybe2cmaybe Nothing  = CP.C_Nothing
+  hmaybe2cmaybe (Just a) = CP.C_Just a
 
 data C_Strategy a
     = Strategy { getStrategy :: SearchTree a -> IO (IOList a) }

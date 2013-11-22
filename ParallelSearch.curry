@@ -25,9 +25,7 @@ getAllValues external
 
 --- Get any value of the expression using the given Strategy
 getOneValue :: Strategy a -> a -> IO (Maybe a)
-getOneValue str x = do
-  vals <- getAllValues str x
-  return (if null vals then Nothing else Just (head vals))
+getOneValue external
 
 data Strategy _ -- precise structure internally defined
 
