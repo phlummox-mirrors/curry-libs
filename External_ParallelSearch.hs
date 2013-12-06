@@ -46,3 +46,6 @@ external_d_C_evalSearch _ _ = Strategy (fromList . evalSearch)
 
 external_d_C_fairSearch :: Cover -> ConstStore -> C_Strategy a
 external_d_C_fairSearch _ _ = Strategy fairSearch
+
+external_d_C_conSearch :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
+external_d_C_conSearch i _ _ = Strategy $ conSearch $ fromCurry i

@@ -17,6 +17,7 @@ module ParallelSearch
   , parSearch
   , evalSearch
   , fairSearch
+  , conSearch
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -40,3 +41,8 @@ evalSearch external
 --- Parallel strategy providing a fair search with concurrency.
 fairSearch :: Strategy a
 fairSearch external
+
+--- Parallel search strategy implemented with concurrent Haskell.
+--- The number given is the maximum number of threads.
+conSearch :: Int -> Strategy a
+conSearch external
