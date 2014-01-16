@@ -15,9 +15,12 @@ module ParallelSearch
   ( getAllValues
   , getOneValue
   , parSearch
-  , evalSearch
   , fairSearch
   , conSearch
+  , splitAll
+  , splitLimitDepth
+  , splitAlternating
+  , splitPower
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -33,11 +36,6 @@ data Strategy _ -- precise structure internally defined
 --- Parallel strategy using Haskells par from Control.Parallel.
 parSearch :: Strategy a
 parSearch external
-
---- Parallel strategy using Haskells Eval monad.
-evalSearch :: Strategy a
-evalSearch external
-
 --- Parallel strategy providing a fair search with concurrency.
 fairSearch :: Strategy a
 fairSearch external
@@ -46,3 +44,18 @@ fairSearch external
 --- The number given is the maximum number of threads.
 conSearch :: Int -> Strategy a
 conSearch external
+
+-- Strategies using Haskells Eval Monad
+
+--- Parallel strategy using Haskells Eval monad.
+splitAll :: Strategy a
+splitAll external
+
+splitLimitDepth :: Int -> Strategy a
+splitLimitDepth external
+
+splitAlternating :: Int -> Strategy a
+splitAlternating external
+
+splitPower :: Strategy a
+splitPower external
