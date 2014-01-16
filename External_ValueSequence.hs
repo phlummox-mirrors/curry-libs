@@ -1,4 +1,5 @@
 import GHC.Exts (Int (I#),(<#))
+import Basics (isTrue#)
 
 external_d_OP_bar_plus_plus_bar ::  Curry_Prelude.Curry a =>
  C_ValueSequence a -> C_ValueSequence a -> Cover -> ConstStore -> C_ValueSequence a
@@ -48,7 +49,7 @@ external_d_C_addVS x vs _ _ = Values (Curry_Prelude.OP_Cons x (getValues vs))
 
 external_d_C_failVS :: Curry_Prelude.C_Int -> Cover -> ConstStore -> C_ValueSequence a 
 external_d_C_failVS d@(Curry_Prelude.C_Int d') (I# cd) _
-  | d' <# cd  = FailVS d 
+  | isTrue# (d' <# cd)  = FailVS d
   | otherwise = Values (Curry_Prelude.OP_List)
 
 external_d_C_vsToList :: C_ValueSequence a -> Cover -> ConstStore -> Curry_Prelude.OP_List a
