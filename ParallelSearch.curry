@@ -21,6 +21,7 @@ module ParallelSearch
   , splitLimitDepth
   , splitAlternating
   , splitPower
+  , bfsParallel
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -59,3 +60,11 @@ splitAlternating external
 
 splitPower :: Strategy a
 splitPower external
+
+--- Parallel breadth-first strategy.
+--- Parallel strategy having the same lavel of completeness as the normal
+--- breadth-first search, but evaluating all values of the current level in the
+--- search tree in parallel. The values are given in the exact same order
+--- compared to the sequencial breadth first search.
+bfsParallel :: Strategy a
+bfsParallel external

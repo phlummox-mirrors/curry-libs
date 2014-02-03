@@ -58,3 +58,6 @@ external_d_C_splitAlternating i _ _ = Strategy $ fromList . (splitAlternating $ 
 
 external_d_C_splitPower :: Cover -> ConstStore -> C_Strategy a
 external_d_C_splitPower _ _ = Strategy $ fromList . splitPower
+
+external_d_C_bfsParallel :: Cover -> ConstStore -> C_Strategy a
+external_d_C_bfsParallel _ _ = Strategy $ fromList . bfsParallel
