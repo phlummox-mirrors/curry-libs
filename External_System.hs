@@ -3,7 +3,7 @@ import qualified Curry_Prelude as CP
 
 import Control.Exception as C (IOException, handle)
 import Network.BSD (getHostName)
-import System.Cmd
+import System.Process
 import System.CPUTime (getCPUTime)
 import System.Environment
 import System.Exit
