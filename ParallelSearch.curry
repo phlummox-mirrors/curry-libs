@@ -22,6 +22,13 @@ module ParallelSearch
   , splitAlternating
   , splitPower
   , bfsParallel
+  , dfsBag
+  , fdfsBag
+  , bfsBag
+  , takeFirst
+  , splitVertical
+  , splitHalf
+  , commonBuffer
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -68,3 +75,26 @@ splitPower external
 --- compared to the sequencial breadth first search.
 bfsParallel :: Strategy a
 bfsParallel external
+
+data SplitStrategy _ -- internally defined
+
+dfsBag :: SplitStrategy a -> Strategy a
+dfsBag external
+
+fdfsBag :: SplitStrategy a -> Strategy a
+fdfsBag external
+
+bfsBag :: SplitStrategy a -> Strategy a
+bfsBag external
+
+commonBuffer :: SplitStrategy a
+commonBuffer external
+
+takeFirst :: SplitStrategy a
+takeFirst external
+
+splitVertical :: SplitStrategy a
+splitVertical external
+
+splitHalf :: SplitStrategy a
+splitHalf external
