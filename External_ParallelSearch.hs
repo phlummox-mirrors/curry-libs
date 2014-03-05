@@ -96,6 +96,9 @@ external_d_C_splitPower _ _ = Strategy $ return . splitPower
 external_d_C_bfsParallel :: Cover -> ConstStore -> C_Strategy a
 external_d_C_bfsParallel _ _ = Strategy $ return . bfsParallel
 
+external_d_C_bfsParallel' :: Cover -> ConstStore -> C_Strategy a
+external_d_C_bfsParallel' _ _ = Strategy $ return . bfsParallel'
+
 data C_SplitStrategy a
     = SplitStrategy { getSplit :: TaskBufferSTM b => Maybe (SplitFunction b a) }
 

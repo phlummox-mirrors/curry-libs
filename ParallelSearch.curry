@@ -23,6 +23,7 @@ module ParallelSearch
   , splitAlternating
   , splitPower
   , bfsParallel
+  , bfsParallel'
   , dfsBag
   , fdfsBag
   , bfsBag
@@ -79,6 +80,9 @@ splitPower external
 --- compared to the sequencial breadth first search.
 bfsParallel :: Strategy a
 bfsParallel external
+
+bfsParallel' :: Strategy a
+bfsParallel' external
 
 data SplitStrategy _ -- internally defined
 
