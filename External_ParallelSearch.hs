@@ -16,13 +16,30 @@ external_d_C_getAllValues :: NormalForm a =>
                           -> CP.C_IO (CP.OP_List a)
 external_d_C_getAllValues (Strategy sy) x c s = fromIO $ do
   let tree = encapsulatedSearch x c s
-  list  <- sy tree
-  hlist <- evalIOList list
-  return $ hlist2clist hlist
-external_d_C_getAllValues (Functions _ allValues) x c s = fromIO $ do
+  hlist  <- sy tree
+  seqList hlist `seq` return $ hlist2clist hlist
+ where
+  seqList []     = ()
+  seqList (x:xs) = seqList xs
+external_d_C_getAllValues (Functions _ allValues _) x c s = fromIO $ do
   let tree = encapsulatedSearch x c s
   list <- allValues tree
   return $ hlist2clist list
+
+external_d_C_getLazyValues :: NormalForm a =>
+                              C_Strategy a
+                           -> a
+                           -> Cover
+                           -> ConstStore
+                           -> CP.C_IO (CP.OP_List a)
+external_d_C_getLazyValues (Strategy sy) x c s = fromIO $ do
+  let tree = encapsulatedSearch x c s
+  hlist <- sy tree
+  return $ hlist2clist hlist
+external_d_C_getLazyValues (Functions _ _ lazyValues) x c s = fromIO $ do
+  let tree = encapsulatedSearch x c s
+  hlist <- lazyValues tree
+  return $ hlist2clist hlist
 
 external_d_C_getOneValue :: NormalForm a =>
                             C_Strategy a
@@ -32,9 +49,11 @@ external_d_C_getOneValue :: NormalForm a =>
                          -> CP.C_IO (CP.C_Maybe a)
 external_d_C_getOneValue (Strategy sy) x c s = fromIO $ do
   let tree = encapsulatedSearch x c s
-  list <- sy tree
-  liftM hmaybe2cmaybe $ listIOToMaybe list
-external_d_C_getOneValue (Functions oneValue _) x c s = fromIO $ do
+  hlist <- sy tree
+  return $ hmaybe2cmaybe $ case hlist of
+    []  -> Nothing
+    x:_ -> Just x
+external_d_C_getOneValue (Functions oneValue _ _) x c s = fromIO $ do
   let tree = encapsulatedSearch x c s
   mb <- oneValue tree
   return $ hmaybe2cmaybe mb
@@ -46,44 +65,48 @@ hlist2clist [] = CP.OP_List
 hlist2clist (x:xs) = CP.OP_Cons x $ hlist2clist xs
 
 data C_Strategy a
-    = Strategy  { getStrategy :: SearchTree a -> IO (IOList a) }
-    | Functions { getOneValue :: SearchTree a -> IO (Maybe a), getAllValues :: SearchTree a -> IO [a] }
+    = Strategy  { getStrategy :: SearchTree a -> IO [a] }
+    | Functions { getOneValue :: SearchTree a -> IO (Maybe a), getAllValues :: SearchTree a -> IO [a], getLazyValues :: SearchTree a -> IO [a] }
+
+fromIOListStrategy s = Functions (\t -> s t >>= listIOToMaybe )
+                                 (\t -> s t >>= evalIOList )
+                                 (\t -> return $ listIOToLazy $ s t)
 
 external_d_C_parSearch :: Cover -> ConstStore -> C_Strategy a
-external_d_C_parSearch _ _ = Strategy (fromList . parSearch)
+external_d_C_parSearch _ _ = Strategy $ return . parSearch
 
 external_d_C_fairSearch :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairSearch _ _ = Strategy fairSearch
+external_d_C_fairSearch _ _ = fromIOListStrategy fairSearch
 
 external_d_C_conSearch :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_conSearch i _ _ = Strategy $ conSearch $ fromCurry i
+external_d_C_conSearch i _ _ = fromIOListStrategy (conSearch $ fromCurry i)
 
 external_d_C_splitAll :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitAll _ _ = Strategy $ fromList . splitAll
+external_d_C_splitAll _ _ = Strategy $ return . splitAll
 
 external_d_C_splitLimitDepth :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitLimitDepth i _ _ = Strategy $ fromList . (splitLimitDepth $ fromCurry i)
+external_d_C_splitLimitDepth i _ _ = Strategy $ return . (splitLimitDepth $ fromCurry i)
 
 external_d_C_splitAlternating :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitAlternating i _ _ = Strategy $ fromList . (splitAlternating $ fromCurry i)
+external_d_C_splitAlternating i _ _ = Strategy $ return . (splitAlternating $ fromCurry i)
 
 external_d_C_splitPower :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitPower _ _ = Strategy $ fromList . splitPower
+external_d_C_splitPower _ _ = Strategy $ return . splitPower
 
 external_d_C_bfsParallel :: Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsParallel _ _ = Strategy $ fromList . bfsParallel
+external_d_C_bfsParallel _ _ = Strategy $ return . bfsParallel
 
 data C_SplitStrategy a
     = SplitStrategy { getSplit :: TaskBufferSTM b => Maybe (SplitFunction b a) }
 
 external_d_C_dfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBag split _ _ = let s = flip $ dfsBag $ getSplit split in Functions (s getResult) (s getAllResults)
+external_d_C_dfsBag split _ _ = let s = flip $ dfsBag $ getSplit split in Functions (s getResult) (s getAllResults) undefined
 
 external_d_C_fdfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_fdfsBag split _ _ = let s = flip $ fdfsBag $ getSplit split in Functions (s getResult) (s getAllResults)
+external_d_C_fdfsBag split _ _ = let s = flip $ fdfsBag $ getSplit split in Functions (s getResult) (s getAllResults) undefined
 
 external_d_C_bfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsBag split _ _ = let s = flip $ bfsBag $ getSplit split in Functions (s getResult) (s getAllResults)
+external_d_C_bfsBag split _ _ = let s = flip $ bfsBag $ getSplit split in Functions (s getResult) (s getAllResults) undefined
 
 external_d_C_commonBuffer :: Cover -> ConstStore -> C_SplitStrategy a
 external_d_C_commonBuffer _ _ = SplitStrategy Nothing

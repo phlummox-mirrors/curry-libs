@@ -14,6 +14,7 @@
 module ParallelSearch
   ( getAllValues
   , getOneValue
+  , getLazyValues
   , parSearch
   , fairSearch
   , conSearch
@@ -38,6 +39,9 @@ getAllValues external
 --- Get any value of the expression using the given Strategy
 getOneValue :: Strategy a -> a -> IO (Maybe a)
 getOneValue external
+
+getLazyValues :: Strategy a -> a -> IO [a]
+getLazyValues external
 
 data Strategy _ -- precise structure internally defined
 
