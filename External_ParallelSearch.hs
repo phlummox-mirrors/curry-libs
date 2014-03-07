@@ -103,13 +103,25 @@ data C_SplitStrategy a
     = SplitStrategy { getSplit :: TaskBufferSTM b => Maybe (SplitFunction b a) }
 
 external_d_C_dfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBag split _ _ = let s = flip $ dfsBag $ getSplit split in Functions (s getResult) (s getAllResults) undefined
+external_d_C_dfsBag split _ _ =
+  let s  = flip $ dfsBag $ getSplit split
+  in Functions (s getResult)
+               (s getAllResults)
+               (dfsBagLazy $ getSplit split)
 
 external_d_C_fdfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_fdfsBag split _ _ = let s = flip $ fdfsBag $ getSplit split in Functions (s getResult) (s getAllResults) undefined
+external_d_C_fdfsBag split _ _ =
+  let s = flip $ fdfsBag $ getSplit split
+  in Functions (s getResult)
+               (s getAllResults)
+               (fdfsBagLazy $ getSplit split)
 
 external_d_C_bfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsBag split _ _ = let s = flip $ bfsBag $ getSplit split in Functions (s getResult) (s getAllResults) undefined
+external_d_C_bfsBag split _ _ =
+  let s = flip $ bfsBag $ getSplit split
+  in Functions (s getResult)
+               (s getAllResults)
+               (bfsBagLazy $ getSplit split)
 
 external_d_C_commonBuffer :: Cover -> ConstStore -> C_SplitStrategy a
 external_d_C_commonBuffer _ _ = SplitStrategy Nothing
