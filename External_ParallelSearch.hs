@@ -70,7 +70,7 @@ data C_Strategy a
 
 fromIOListStrategy s = Functions (\t -> s t >>= listIOToMaybe )
                                  (\t -> s t >>= evalIOList )
-                                 (\t -> return $ listIOToLazy $ s t)
+                                 (\t -> listIOToLazy $ s t)
 
 external_d_C_parSearch :: Cover -> ConstStore -> C_Strategy a
 external_d_C_parSearch _ _ = Strategy $ return . parSearch
