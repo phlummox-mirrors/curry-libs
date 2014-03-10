@@ -23,7 +23,7 @@
 
 ------------------------------------------------------------------------------
 
-module CLPFD(domain,(+#),(-#),(*#),(=#), (/=#), (<#), (<=#), (>#), (>=#), allDifferent, sum, labeling, genVars) where
+module CLPFD(domain,(+#),(-#),(*#),(=#), (/=#), (<#), (<=#), (>#), (>=#), abs, allDifferent, sum, labeling, genVars) where
 
 -- The operator declarations are similar to the standard arithmetic
 -- and relational operators.
@@ -110,6 +110,13 @@ x >=# y = (prim_FD_geq $!! x) $!! y
 
 prim_FD_geq :: Int -> Int -> Success
 prim_FD_geq external
+
+abs :: Int -> Int
+abs x = (prim_abs $!! x) result
+ where result free
+
+prim_abs :: Int -> Int -> Int
+prim_abs external
 
 -- "All different" constraint on FD variables.
 -- @param vs - list of FD variables

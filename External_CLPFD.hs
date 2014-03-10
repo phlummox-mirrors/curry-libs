@@ -60,6 +60,11 @@ external_d_C_prim_FD_ge x y cd cs = d_C_prim_FD_le y x cd cs
 external_d_C_prim_FD_geq :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_FD_geq x y cd cs = d_C_prim_FD_leq y x cd cs
 
+external_d_C_prim_abs :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
+external_d_C_prim_abs x result cd cs = narrowIfFree x contFree contFree cd cs
+ where
+  contFree x' cd' _ = mkGuardExt cd' (FDAbs (toCsExpr x') (toCsExpr result)) result
+
 external_d_C_prim_allDifferent :: CP.OP_List CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_allDifferent vs cd cs
   | any isFree hvs                       = mkGuardExt cd (FDAllDifferent (toFDList vs)) C_Success
