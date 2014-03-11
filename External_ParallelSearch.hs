@@ -123,6 +123,13 @@ external_d_C_bfsBag split _ _ =
                (s getAllResults)
                (bfsBagLazy $ getSplit split)
 
+external_d_C_fairBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
+external_d_C_fairBag split _ _ =
+  let s = flip $ fairBag $ getSplit split
+  in Functions (s getResult)
+               (s getAllResults)
+               (fairBagLazy $ getSplit split)
+
 external_d_C_commonBuffer :: Cover -> ConstStore -> C_SplitStrategy a
 external_d_C_commonBuffer _ _ = SplitStrategy Nothing
 

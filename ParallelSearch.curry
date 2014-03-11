@@ -27,6 +27,7 @@ module ParallelSearch
   , dfsBag
   , fdfsBag
   , bfsBag
+  , fairBag
   , takeFirst
   , splitVertical
   , splitHalf
@@ -94,6 +95,9 @@ fdfsBag external
 
 bfsBag :: SplitStrategy a -> Strategy a
 bfsBag external
+
+fairBag :: SplitStrategy a -> Strategy a
+fairBag external
 
 commonBuffer :: SplitStrategy a
 commonBuffer external
