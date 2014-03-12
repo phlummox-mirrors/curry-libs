@@ -18,6 +18,8 @@ module ParallelSearch
   , parSearch
   , fairSearch
   , conSearch
+  , fairSearch'
+  , fairSearch''
   , splitAll
   , splitLimitDepth
   , splitAlternating
@@ -58,6 +60,12 @@ fairSearch external
 --- The number given is the maximum number of threads.
 conSearch :: Int -> Strategy a
 conSearch external
+
+fairSearch' :: Strategy a
+fairSearch' external
+
+fairSearch'' :: Strategy a
+fairSearch'' external
 
 -- Strategies using Haskells Eval Monad
 
