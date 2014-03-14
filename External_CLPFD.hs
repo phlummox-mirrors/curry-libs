@@ -17,7 +17,10 @@ cond p x y cd cs
 external_d_C_prim_domain :: CP.OP_List CP.C_Int -> CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_domain vs l u cd cs = narrowIfFree2 l u cont cont cd cs
  where 
-  cont l' u' cd' _ = mkGuardExt cd' (FDDomain (toFDList vs) (toCsExpr l') (toCsExpr u')) C_Success
+  cont l' u' cd' _ = mkGuardExt cd' (FDDomRange (toFDList vs) (toCsExpr l') (toCsExpr u')) C_Success
+
+external_d_C_prim_inDomain :: CP.OP_List CP.C_Int -> CP.OP_List CP.C_Int -> Cover -> ConstStore -> CP.C_Success
+external_d_C_prim_inDomain vs dom cd cs = mkGuardExt cd (FDDomSet (toFDList vs) (toFDList dom)) C_Success 
 
 external_d_C_prim_FD_plus :: CP.C_Int -> CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
 external_d_C_prim_FD_plus x y result cd cs = narrowIfFree2 x y contFree CP.d_OP_plus cd cs
@@ -33,6 +36,16 @@ external_d_C_prim_FD_times :: CP.C_Int -> CP.C_Int -> CP.C_Int -> Cover -> Const
 external_d_C_prim_FD_times x y result cd cs = narrowIfFree2 x y contFree CP.d_OP_star cd cs
  where
   contFree x' y' cd' _ = mkGuardExt cd' (newArithConstr Mult x' y' result) result
+
+external_d_C_prim_FD_div :: CP.C_Int -> CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
+external_d_C_prim_FD_div x y result cd cs = narrowIfFree2 x y contFree CP.d_C_div cd cs
+ where
+  contFree x' y' cd' _ = mkGuardExt cd' (newArithConstr Div x' y' result) result
+
+external_d_C_prim_abs :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
+external_d_C_prim_abs x result cd cs = narrowIfFree x contFree contFree cd cs
+ where
+  contFree x' cd' _ = mkGuardExt cd' (FDAbs (toCsExpr x') (toCsExpr result)) result
 
 external_d_C_prim_FD_equal :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_FD_equal x y cd cs = narrowIfFree2 x y contFree (cond CP.d_OP_eq_eq) cd cs
@@ -59,11 +72,6 @@ external_d_C_prim_FD_ge x y cd cs = d_C_prim_FD_le y x cd cs
 
 external_d_C_prim_FD_geq :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_FD_geq x y cd cs = d_C_prim_FD_leq y x cd cs
-
-external_d_C_prim_abs :: CP.C_Int -> CP.C_Int -> Cover -> ConstStore -> CP.C_Int
-external_d_C_prim_abs x result cd cs = narrowIfFree x contFree contFree cd cs
- where
-  contFree x' cd' _ = mkGuardExt cd' (FDAbs (toCsExpr x') (toCsExpr result)) result
 
 external_d_C_prim_allDifferent :: CP.OP_List CP.C_Int -> Cover -> ConstStore -> CP.C_Success
 external_d_C_prim_allDifferent vs cd cs
