@@ -21,6 +21,7 @@ module ParallelSearch
   , fairSearch'
   , fairSearch''
   , splitAll
+  , splitAll'
   , splitLimitDepth
   , splitAlternating
   , splitPower
@@ -72,6 +73,9 @@ fairSearch'' external
 --- Parallel strategy using Haskells Eval monad.
 splitAll :: Strategy a
 splitAll external
+
+splitAll' :: Strategy a
+splitAll' external
 
 splitLimitDepth :: Int -> Strategy a
 splitLimitDepth external
