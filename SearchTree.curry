@@ -15,6 +15,7 @@ module SearchTree
   , dfsStrategy, bfsStrategy, idsStrategy, idsStrategyWith, diagStrategy
   , allValuesWith
   , allValuesDFS, allValuesBFS, allValuesIDS, allValuesIDSwith, allValuesDiag
+  , parDfsStrategy
   , ValueSequence, vsToList
   , getAllValuesWith, printAllValuesWith, printValuesWith
   , someValue, someValueWith
@@ -214,6 +215,21 @@ diagonal = concat . foldr diags []
   merge xs@(_:_)  []      = map (:[]) xs
   merge (x:xs)    (y:ys)  = (x:y) : merge xs ys
 
+
+------------------------------------------------------------------------------
+-- Parallel strategies:
+------------------------------------------------------------------------------
+
+-- These strategies are defined externally, because we need Haskell's
+-- parallelization support.
+
+--- Strategy for parallel evaluation with a depth-first strategy.
+--- This is the same as 'dfsStrategy', but it may be faster when run on a
+--- multi-processor system.
+--- Remember to use the "-Nn" runtime option with *n* being the number of
+--- threads.
+parDfsStrategy :: Strategy a
+parDfsStrategy external
 
 ------------------------------------------------------------------------------
 -- Operations to map search trees into list of values.
