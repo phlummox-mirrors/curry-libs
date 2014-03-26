@@ -15,7 +15,7 @@ module SearchTree
   , dfsStrategy, bfsStrategy, idsStrategy, idsStrategyWith, diagStrategy
   , allValuesWith
   , allValuesDFS, allValuesBFS, allValuesIDS, allValuesIDSwith, allValuesDiag
-  , parDfsStrategy
+  , parDfsStrategy, parBfsBagStrategy
   , ValueSequence, vsToList
   , getAllValuesWith, printAllValuesWith, printValuesWith
   , someValue, someValueWith
@@ -230,6 +230,15 @@ diagonal = concat . foldr diags []
 --- threads.
 parDfsStrategy :: Strategy a
 parDfsStrategy external
+
+--- Strategy for parallel evaluation with a strategy similar to
+--- breadth-first search in terms of completeness. However, the order of the
+--- returned values (which is irrelevant when using 'SetFunctions') is
+--- depending on the scheduling.
+--- Remember to use the "-Nn" runtime option with *n* being the number of
+--- threads.
+parBfsBagStrategy :: Strategy a
+parBfsBagStrategy external
 
 ------------------------------------------------------------------------------
 -- Operations to map search trees into list of values.

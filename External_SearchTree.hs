@@ -5,6 +5,10 @@ import GHC.Exts (Int (I#))
 import Strategies
 import qualified Curry_ValueSequence as VS
 import Control.Parallel.Strategies
+import Control.Concurrent.Bag.Task (Interruptible (..))
+import qualified Control.Concurrent.Bag.Implicit as Implicit
+import System.IO.Unsafe (unsafePerformIO)
+import Control.Concurrent.STM (TChan)
 
 instance Monad C_SearchTree where
   return = C_Value
@@ -57,3 +61,32 @@ external_d_C_parDfsStrategy tree cv cs = case tree of
   Fail_C_SearchTree cv' fi -> failCons cv' fi
   Guard_C_SearchTree cv' cs' t -> guardCons cv' cs' (external_d_C_parDfsStrategy t cv $! addCs cs' cs)
   _ -> failCons cv defFailInfo -- TODO: is this necessary
+
+external_d_C_parBfsBagStrategy :: Curry_Prelude.Curry a => C_SearchTree a -> Cover -> ConstStore -> VS.C_ValueSequence a
+external_d_C_parBfsBagStrategy tree cv cs =
+  listOfValueSequences cv cs $ unsafePerformIO $ Implicit.newInterruptibleBag Implicit.Queue (Just (Implicit.takeFirst :: Implicit.SplitFunction (VS.C_ValueSequence a))) [bfsTask cv cs tree]
+
+listOfValueSequences :: Curry_Prelude.Curry a => Cover -> ConstStore -> [VS.C_ValueSequence a] -> VS.C_ValueSequence a
+listOfValueSequences cv cs [] =     VS.d_C_emptyVS cv cs
+listOfValueSequences cv cs (x:xs) = VS.d_OP_bar_plus_plus_bar x (listOfValueSequences cv cs xs) cv cs
+
+
+bfsTask :: Curry_Prelude.Curry a => Cover -> ConstStore -> C_SearchTree a -> Interruptible (VS.C_ValueSequence a)
+bfsTask cv cs t =
+  case t of
+    C_Fail  d -> OneResult $ VS.d_C_failVS d cv cs
+    C_Value x -> OneResult $ VS.d_C_addVS  x (VS.d_C_emptyVS cv cs) cv cs
+    C_Or    l r -> AddInterruptibles [bfsTask cv cs l, bfsTask cv cs r]
+    -- All constructors below mean that there is a some kind of non-determinism,
+    -- we do not want to encapsulate this. This is why we do not follow the tree
+    -- further here. This will be done lazily once the value is requested
+    -- with this strategy.
+    Choice_C_SearchTree cv' i l r ->
+      OneResult $ narrow cv' i (external_d_C_parBfsBagStrategy l cv cs) (external_d_C_parBfsBagStrategy r cv cs) -- which constructors may appear in here Or?
+    Choices_C_SearchTree cv' i ts ->
+      OneResult $ narrows cs cv' i (\z -> external_d_C_parBfsBagStrategy z cv cs) ts
+    Fail_C_SearchTree cv' fi -> OneResult $ failCons cv' fi
+    Guard_C_SearchTree cv' cs' t ->
+      OneResult $ guardCons cv' cs' (external_d_C_parBfsBagStrategy t cv $! addCs cs' cs)
+    _ ->
+      OneResult $ failCons cv defFailInfo
