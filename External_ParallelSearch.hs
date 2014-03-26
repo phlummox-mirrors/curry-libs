@@ -5,6 +5,7 @@ import MonadSearch
 import MonadList
 import Strategies
 import Control.Parallel.Strategies
+import Control.Concurrent.Bag.TaskBuffer (SplitFunction, TaskBufferSTM (..), splitVertical, splitHalf)
 import Control.Concurrent.Bag.Safe (SplitFunction, TaskBufferSTM (..), takeFirst)
 import qualified Curry_Prelude as CP
 
@@ -109,7 +110,7 @@ external_d_C_bfsParallel' :: Cover -> ConstStore -> C_Strategy a
 external_d_C_bfsParallel' _ _ = Strategy $ return . bfsParallel'
 
 data C_SplitStrategy a
-    = SplitStrategy { getSplit :: TaskBufferSTM b => Maybe (SplitFunction b a) }
+    = SplitStrategy { getSplit :: Maybe (SplitFunction a) }
 
 external_d_C_dfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
 external_d_C_dfsBag split _ _ =
