@@ -62,14 +62,13 @@ external_d_C_parDfsStrategy tree cv cs = case tree of
   Guard_C_SearchTree cv' cs' t -> guardCons cv' cs' (external_d_C_parDfsStrategy t cv $! addCs cs' cs)
   _ -> failCons cv defFailInfo -- TODO: is this necessary
 
-external_d_C_parBfsBagStrategy :: Curry_Prelude.Curry a => C_SearchTree a -> Cover -> ConstStore -> VS.C_ValueSequence a
-external_d_C_parBfsBagStrategy tree cv cs =
-  listOfValueSequences cv cs $ unsafePerformIO $ Implicit.newInterruptibleBag Implicit.Queue (Just (Implicit.takeFirst :: Implicit.SplitFunction (VS.C_ValueSequence a))) [bfsTask cv cs tree]
-
 listOfValueSequences :: Curry_Prelude.Curry a => Cover -> ConstStore -> [VS.C_ValueSequence a] -> VS.C_ValueSequence a
 listOfValueSequences cv cs [] =     VS.d_C_emptyVS cv cs
 listOfValueSequences cv cs (x:xs) = VS.d_OP_bar_plus_plus_bar x (listOfValueSequences cv cs xs) cv cs
 
+external_d_C_parBfsBagStrategy :: Curry_Prelude.Curry a => C_SearchTree a -> Cover -> ConstStore -> VS.C_ValueSequence a
+external_d_C_parBfsBagStrategy tree cv cs =
+  listOfValueSequences cv cs $ unsafePerformIO $ Implicit.newInterruptibleBag Implicit.Queue (Just (Implicit.takeFirst :: Implicit.SplitFunction (VS.C_ValueSequence a))) [bfsTask cv cs tree]
 
 bfsTask :: Curry_Prelude.Curry a => Cover -> ConstStore -> C_SearchTree a -> Interruptible (VS.C_ValueSequence a)
 bfsTask cv cs t =
@@ -90,3 +89,26 @@ bfsTask cv cs t =
       OneResult $ guardCons cv' cs' (external_d_C_parBfsBagStrategy t cv $! addCs cs' cs)
     _ ->
       OneResult $ failCons cv defFailInfo
+
+external_d_C_parDfsBagStrategy :: Curry_Prelude.Curry a => C_SearchTree a -> Cover -> ConstStore -> VS.C_ValueSequence a
+external_d_C_parDfsBagStrategy tree cv cs =
+  listOfValueSequences cv cs $ unsafePerformIO $ Implicit.newTaskBag Implicit.Stack (Just (Implicit.takeFirst :: Implicit.SplitFunction (VS.C_ValueSequence a))) [dfsTask cv cs tree]
+
+dfsTask :: Curry_Prelude.Curry a => Cover -> ConstStore -> C_SearchTree a -> Implicit.TaskIO (VS.C_ValueSequence a) (Maybe (VS.C_ValueSequence a))
+dfsTask cv cs t =
+  case t of
+    C_Fail  d -> return $ Just $ VS.d_C_failVS d cv cs
+    C_Value x -> return $ Just $ VS.d_C_addVS  x (VS.d_C_emptyVS cv cs) cv cs
+    C_Or l r -> do
+      Implicit.addTaskIO $ dfsTask cv cs r
+      dfsTask cv cs l
+    Choice_C_SearchTree cv' i l r ->
+      return $ Just $ narrow cv' i (external_d_C_parDfsBagStrategy l cv cs) (external_d_C_parDfsBagStrategy r cv cs)
+    Choices_C_SearchTree cv' i ts ->
+      return $ Just $ narrows cs cv' i (\z -> external_d_C_parDfsBagStrategy z cv cs) ts
+    Fail_C_SearchTree cv' fi ->
+      return $ Just $ failCons cv' fi
+    Guard_C_SearchTree cv' cs' t ->
+      return $ Just $ guardCons cv' cs' (external_d_C_parDfsBagStrategy t cv $! addCs cs' cs)
+    _ ->
+      return $ Just $ failCons cv defFailInfo
