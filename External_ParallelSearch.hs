@@ -5,7 +5,7 @@ import MonadSearch
 import MonadList
 import Strategies
 import Control.Parallel.Strategies
-import Control.Concurrent.Bag.TaskBuffer (SplitFunction, TaskBufferSTM (..), splitVertical, splitHalf)
+import Control.Concurrent.Bag.TaskBufferSTM (SplitFunction, TaskBufferSTM (..), splitVertical, splitHalf)
 import Control.Concurrent.Bag.Safe (SplitFunction, TaskBufferSTM (..), takeFirst)
 import qualified Curry_Prelude as CP
 
@@ -119,12 +119,26 @@ external_d_C_dfsBag split _ _ =
                (s getAllResults)
                (dfsBagLazy $ getSplit split)
 
+external_d_C_dfsBagCon :: Cover -> ConstStore -> C_Strategy a
+external_d_C_dfsBagCon _ _ =
+  let s = flip $ dfsBagCon
+  in Functions (s getResult)
+               (s getAllResults)
+               dfsBagConLazy
+
 external_d_C_fdfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
 external_d_C_fdfsBag split _ _ =
   let s = flip $ fdfsBag $ getSplit split
   in Functions (s getResult)
                (s getAllResults)
                (fdfsBagLazy $ getSplit split)
+
+external_d_C_fdfsBagCon :: Cover -> ConstStore -> C_Strategy a
+external_d_C_fdfsBagCon _ _ =
+  let s = flip $ fdfsBagCon
+  in Functions (s getResult)
+               (s getAllResults)
+               fdfsBagConLazy
 
 external_d_C_bfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
 external_d_C_bfsBag split _ _ =
@@ -133,12 +147,26 @@ external_d_C_bfsBag split _ _ =
                (s getAllResults)
                (bfsBagLazy $ getSplit split)
 
+external_d_C_bfsBagCon :: Cover -> ConstStore -> C_Strategy a
+external_d_C_bfsBagCon _ _ =
+  let s = flip $ bfsBagCon
+  in Functions (s getResult)
+               (s getAllResults)
+               bfsBagConLazy
+
 external_d_C_fairBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
 external_d_C_fairBag split _ _ =
   let s = flip $ fairBag $ getSplit split
   in Functions (s getResult)
                (s getAllResults)
                (fairBagLazy $ getSplit split)
+
+external_d_C_fairBagCon :: Cover -> ConstStore -> C_Strategy a
+external_d_C_fairBagCon _ _ =
+  let s = flip $ fairBagCon
+  in Functions (s getResult)
+               (s getAllResults)
+               fairBagConLazy
 
 external_d_C_commonBuffer :: Cover -> ConstStore -> C_SplitStrategy a
 external_d_C_commonBuffer _ _ = SplitStrategy Nothing

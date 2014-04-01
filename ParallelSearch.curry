@@ -8,7 +8,7 @@
 --- If you are interested in a sequential strategy have a look at SearchTree.
 --- 
 --- @author  Bastian Holst
---- @version November 2013
+--- @version April 2014
 ------------------------------------------------------------------------------
 
 module ParallelSearch
@@ -28,9 +28,13 @@ module ParallelSearch
   , bfsParallel
   , bfsParallel'
   , dfsBag
+  , dfsBagCon
   , fdfsBag
+  , fdfsBagCon
   , bfsBag
+  , bfsBagCon
   , fairBag
+  , fairBagCon
   , takeFirst
   , splitVertical
   , splitHalf
@@ -102,14 +106,26 @@ data SplitStrategy _ -- internally defined
 dfsBag :: SplitStrategy a -> Strategy a
 dfsBag external
 
+dfsBagCon :: Strategy a
+dfsBagCon external
+
 fdfsBag :: SplitStrategy a -> Strategy a
 fdfsBag external
+
+fdfsBagCon :: Strategy a
+fdfsBagCon external
 
 bfsBag :: SplitStrategy a -> Strategy a
 bfsBag external
 
+bfsBagCon :: Strategy a
+bfsBagCon external
+
 fairBag :: SplitStrategy a -> Strategy a
 fairBag external
+
+fairBagCon :: Strategy a
+fairBagCon external
 
 commonBuffer :: SplitStrategy a
 commonBuffer external
