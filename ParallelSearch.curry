@@ -29,6 +29,7 @@ module ParallelSearch
   , bfsParallel'
   , dfsBag
   , dfsBagCon
+  , dfsBagLimit
   , fdfsBag
   , fdfsBagCon
   , bfsBag
@@ -105,6 +106,9 @@ data SplitStrategy _ -- internally defined
 
 dfsBag :: SplitStrategy a -> Strategy a
 dfsBag external
+
+dfsBagLimit :: SplitStrategy a -> Int -> Strategy a
+dfsBagLimit external
 
 dfsBagCon :: Strategy a
 dfsBagCon external

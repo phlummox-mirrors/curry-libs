@@ -119,6 +119,14 @@ external_d_C_dfsBag split _ _ =
                (s getAllResults)
                (dfsBagLazy $ getSplit split)
 
+external_d_C_dfsBagLimit :: C_SplitStrategy a -> CP.C_Int -> Cover -> ConstStore -> C_Strategy a
+external_d_C_dfsBagLimit split cn _ _ =
+  let n = fromCurry cn
+      s = flip $ dfsBagLimit (getSplit split) n
+  in Functions (s getResult)
+               (s getAllResults)
+               (dfsBagLimitLazy (getSplit split) n)
+
 external_d_C_dfsBagCon :: Cover -> ConstStore -> C_Strategy a
 external_d_C_dfsBagCon _ _ =
   let s = flip $ dfsBagCon

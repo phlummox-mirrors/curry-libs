@@ -81,7 +81,7 @@ bfsTask cv cs t =
     -- further here. This will be done lazily once the value is requested
     -- with this strategy.
     Choice_C_SearchTree cv' i l r ->
-      OneResult $ narrow cv' i (external_d_C_parBfsBagStrategy l cv cs) (external_d_C_parBfsBagStrategy r cv cs) -- which constructors may appear in here Or?
+      OneResult $ narrow cv' i (external_d_C_parBfsBagStrategy l cv cs) (external_d_C_parBfsBagStrategy r cv cs)
     Choices_C_SearchTree cv' i ts ->
       OneResult $ narrows cs cv' i (\z -> external_d_C_parBfsBagStrategy z cv cs) ts
     Fail_C_SearchTree cv' fi -> OneResult $ failCons cv' fi
