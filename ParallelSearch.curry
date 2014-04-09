@@ -24,6 +24,10 @@ module ParallelSearch
   , splitAll'
   , splitLimitDepth
   , splitAlternating
+  , splitRight
+  , splitRight'
+  , splitLeft
+  , splitLeft'
   , splitPower
   , bfsParallel
   , bfsParallel'
@@ -90,6 +94,18 @@ splitAlternating external
 
 splitPower :: Strategy a
 splitPower external
+
+splitRight :: Strategy a
+splitRight external
+
+splitRight' :: Strategy a
+splitRight' external
+
+splitLeft :: Strategy a
+splitLeft external
+
+splitLeft' :: Strategy a
+splitLeft' external
 
 --- Parallel breadth-first strategy.
 --- Parallel strategy having the same lavel of completeness as the normal
