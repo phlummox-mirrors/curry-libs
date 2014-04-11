@@ -34,6 +34,8 @@ module ParallelSearch
   , dfsBag
   , dfsBagCon
   , dfsBagLimit
+  , dfsBagRight
+  , dfsBagLeft
   , fdfsBag
   , fdfsBagCon
   , bfsBag
@@ -125,6 +127,12 @@ dfsBag external
 
 dfsBagLimit :: SplitStrategy a -> Int -> Strategy a
 dfsBagLimit external
+
+dfsBagRight :: SplitStrategy a -> Int -> Strategy a
+dfsBagRight external
+
+dfsBagLeft :: SplitStrategy a -> Int -> Strategy a
+dfsBagLeft external
 
 dfsBagCon :: Strategy a
 dfsBagCon external
