@@ -100,17 +100,17 @@ external_d_C_splitLimitDepth i _ _ = Strategy $ return . (splitLimitDepth $ from
 external_d_C_splitAlternating :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
 external_d_C_splitAlternating i _ _ = Strategy $ return . (splitAlternating $ fromCurry i)
 
-external_d_C_splitRight :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitRight _ _ = Strategy $ return . splitRight
+external_d_C_splitRight :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
+external_d_C_splitRight i _ _ = Strategy $ return . (splitRight $ fromCurry i)
 
-external_d_C_splitRight' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitRight' _ _ = Strategy $ return . splitRight'
+external_d_C_splitRight' :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
+external_d_C_splitRight' i _ _ = Strategy $ return . (splitRight' $ fromCurry i)
 
-external_d_C_splitLeft :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitLeft _ _ = Strategy $ return . splitLeft
+external_d_C_splitLeft :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
+external_d_C_splitLeft i _ _ = Strategy $ return . (splitLeft $ fromCurry i)
 
-external_d_C_splitLeft' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitLeft' _ _ = Strategy $ return . splitLeft'
+external_d_C_splitLeft' :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
+external_d_C_splitLeft' i _ _ = Strategy $ return . (splitLeft' $ fromCurry i)
 
 external_d_C_splitPower :: Cover -> ConstStore -> C_Strategy a
 external_d_C_splitPower _ _ = Strategy $ return . splitPower

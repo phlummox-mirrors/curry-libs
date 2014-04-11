@@ -95,16 +95,16 @@ splitAlternating external
 splitPower :: Strategy a
 splitPower external
 
-splitRight :: Strategy a
+splitRight :: Int -> Strategy a
 splitRight external
 
-splitRight' :: Strategy a
+splitRight' :: Int -> Strategy a
 splitRight' external
 
-splitLeft :: Strategy a
+splitLeft :: Int -> Strategy a
 splitLeft external
 
-splitLeft' :: Strategy a
+splitLeft' :: Int -> Strategy a
 splitLeft' external
 
 --- Parallel breadth-first strategy.
