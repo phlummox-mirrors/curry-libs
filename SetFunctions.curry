@@ -43,7 +43,7 @@ module SetFunctions
           Values,isEmpty,valueOf,
           choose,chooseValue,select,selectValue,
           mapValues,foldValues,minValue,maxValue,
-          values2list,printValues,sortValues,sortValuesBy)
+          values2list,printValues,sortValues,sortValuesBy, countValues)
  where
 
 import Sort(mergeSort)
@@ -268,5 +268,8 @@ sortValues = sortValuesBy (<=)
 --- evaluation order, the given ordering must be a total order.
 sortValuesBy :: (a -> a -> Bool) -> Values a -> [a]
 sortValuesBy leq (Values s) = mergeSort leq s
+
+countValues :: Values a -> Int
+countValues (Values s) = length s
 
 ------------------------------------------------------------------------
