@@ -31,6 +31,7 @@ module ParallelSearch
   , splitPower
   , bfsParallel
   , bfsParallel'
+  , bfsParallel''
   , dfsBag
   , dfsBagCon
   , dfsBagLimit
@@ -119,6 +120,9 @@ bfsParallel external
 
 bfsParallel' :: Strategy a
 bfsParallel' external
+
+bfsParallel'' :: Strategy a
+bfsParallel'' external
 
 data SplitStrategy _ -- internally defined
 

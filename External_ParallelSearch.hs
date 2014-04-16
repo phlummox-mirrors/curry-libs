@@ -121,6 +121,9 @@ external_d_C_bfsParallel _ _ = Strategy $ return . bfsParallel
 external_d_C_bfsParallel' :: Cover -> ConstStore -> C_Strategy a
 external_d_C_bfsParallel' _ _ = Strategy $ return . bfsParallel'
 
+external_d_C_bfsParallel'' :: Cover -> ConstStore -> C_Strategy a
+external_d_C_bfsParallel'' _ _ = Strategy $ return . bfsParallel''
+
 data C_SplitStrategy a
     = SplitStrategy { getSplit :: Maybe (SplitFunction a) }
 
