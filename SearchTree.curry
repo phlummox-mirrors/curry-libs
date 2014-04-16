@@ -19,10 +19,12 @@ module SearchTree
   , ValueSequence, vsToList
   , getAllValuesWith, printAllValuesWith, printValuesWith
   , someValue, someValueWith
+  , searchTreeEvaluationTimes, showTree
   ) where
 
 import ValueSequence
 import IO(hFlush,stdout)
+import System
 
 --- A search tree is a value, a failure, or a choice between two search trees.
 data SearchTree a = Value a
@@ -67,21 +69,6 @@ showSearchTree st = showsST [] st ""
                           . showsST (False : ctxt) t1
                           . showsST (True  : ctxt) t2
 
-  indent []     = id
-  indent (i:is) = showString (concatMap showIndent $ reverse is)
-                . showChar   (if i then llc else lmc)
-                . showString (hbar : " ")
-    where showIndent isLast = (if isLast then ' ' else vbar) : "  "
-
-  vbar = '\x2502' -- vertical bar
-  hbar = '\x2500' -- horizontal bar
-  llc  = '\x2514' -- left lower corner
-  lmc  = '\x251c' -- left middle corner
-
-  nl           = showChar '\n'
-  shows x      = showString (show x)
-  showChar c   = (c:)
-  showString s = (s++)
 
 -- showSearchTree st = showST 0 st ""
 --  where
@@ -92,6 +79,21 @@ showSearchTree st = showsST [] st ""
 --     where i'    = i + 1
 --           tab j = showString $ replicate (3 * j) ' '
 
+indent []     = id
+indent (i:is) = showString (concatMap showIndent $ reverse is)
+              . showChar   (if i then llc else lmc)
+              . showString (hbar : " ")
+ where
+  showIndent isLast = (if isLast then ' ' else vbar) : "  "
+  vbar = '\x2502' -- vertical bar
+  hbar = '\x2500' -- horizontal bar
+  llc  = '\x2514' -- left lower corner
+  lmc  = '\x251c' -- left middle corner
+
+nl           = showChar '\n'
+shows x      = showString (show x)
+showChar c   = (c:)
+showString s = (s++)
 
 --- Return the size (number of Value/Fail/Or nodes) of the search tree
 searchTreeSize :: SearchTree _ -> (Int, Int, Int)
@@ -341,3 +343,52 @@ someValue = someValueWith bfsStrategy
 --- has a single value. It fails if the expression has no value.
 someValueWith :: Strategy a -> a -> a
 someValueWith strategy x = head (vsToList (strategy (someSearchTree x)))
+
+-----------------------------------------------------------------------------
+
+data Tree a = Leaf a | Branch (Tree a) a (Tree a)
+
+branch :: Tree Int -> Int -> Tree Int -> Tree Int
+branch l i r =
+  Branch l (label l + i + label r) r
+
+label :: Tree a -> a
+label (Leaf x) = x
+label (Branch _ x _) = x
+
+showTree :: Tree Int -> String
+showTree t = showsST [] t ""
+ where
+  -- `showsST ctxt <SearchTree>`, where `ctxt` is a stack of boolean flags
+  -- indicating whether we show the last alternative of the respective
+  -- level to enable drawing aesthetical corners
+  showsST ctxt (Leaf  a)        = indent ctxt . shows a      . nl
+  showsST ctxt (Branch t1 a t2) = indent ctxt . shows a      . nl
+                          . showsST (False : ctxt) t1
+                          . showsST (True  : ctxt) t2
+
+searchTreeEvaluationTimes :: SearchTree a -> Int -> IO (Tree Int)
+searchTreeEvaluationTimes st i =
+  case i of
+    0 -> do
+      before <- getCPUTime
+      let l = length $ allValuesDFS st
+      after  <- l `seq` getCPUTime
+      return $ Leaf (after - before)
+    _ -> do
+      before <- getCPUTime
+      st' <- evaluateSearchTree st
+      after  <- getCPUTime
+      case st' of
+        Or l r -> do
+          lr <- searchTreeEvaluationTimes l (i-1)
+          rr <- searchTreeEvaluationTimes r (i-1)
+          return $ branch lr (after - before) rr
+        _          -> return $ Leaf (after - before)
+
+
+ where
+  evaluateSearchTree :: SearchTree a -> IO (SearchTree a)
+  evaluateSearchTree (Value x) = return $ Value x
+  evaluateSearchTree (Fail i)  = return $ Fail i
+  evaluateSearchTree (Or x y)  = return $ Or x y
