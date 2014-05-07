@@ -77,16 +77,16 @@ external_d_C_parSearch :: Cover -> ConstStore -> C_Strategy a
 external_d_C_parSearch _ _ = Strategy $ return . parSearch
 
 external_d_C_fairSearch :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairSearch _ _ = fromIOListStrategy fairSearch
+external_d_C_fairSearch _ _ = Strategy fairSearch
 
 external_d_C_conSearch :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_conSearch i _ _ = fromIOListStrategy (conSearch $ fromCurry i)
+external_d_C_conSearch i _ _ = Strategy (conSearch $ fromCurry i)
 
 external_d_C_fairSearch' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairSearch' _ _ = fromIOListStrategy fairSearch'
+external_d_C_fairSearch' _ _ = Strategy fairSearch'
 
 external_d_C_fairSearch'' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairSearch'' _ _ = fromIOListStrategy fairSearch''
+external_d_C_fairSearch'' _ _ = Strategy fairSearch''
 
 external_d_C_splitAll :: Cover -> ConstStore -> C_Strategy a
 external_d_C_splitAll _ _ = Strategy $ return . splitAll
