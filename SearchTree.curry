@@ -228,8 +228,8 @@ diagonal = concat . foldr diags []
 --- Strategy for parallel evaluation with a depth-first strategy.
 --- This is the same as 'dfsStrategy', but it may be faster when run on a
 --- multi-processor system.
---- Remember to use the "-Nn" runtime option with *n* being the number of
---- threads.
+--- To fully exploit the you have to set the thread number as an option of
+--- the runtime.
 parDfsStrategy :: Strategy a
 parDfsStrategy external
 
@@ -237,8 +237,8 @@ parDfsStrategy external
 --- breadth-first search in terms of completeness. However, the order of the
 --- returned values (which is irrelevant when using 'SetFunctions') is
 --- depending on the scheduling.
---- Remember to use the "-Nn" runtime option with *n* being the number of
---- threads.
+--- To fully exploit the you have to set the thread number as an option of
+--- the runtime.
 parBfsBagStrategy :: Strategy a
 parBfsBagStrategy external
 
@@ -246,8 +246,8 @@ parBfsBagStrategy external
 --- depth-first search in terms of completeness. However, the order of the
 --- returned values (which is irrelevant when using 'SetFunctions') is
 --- depending on the scheduling.
---- Remember to use the "-Nn" runtime option with *n* being the number of
---- threads.
+--- To fully exploit the you have to set the thread number as an option of
+--- the runtime.
 parDfsBagStrategy :: Strategy a
 parDfsBagStrategy external
 
