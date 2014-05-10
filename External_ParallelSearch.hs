@@ -94,6 +94,9 @@ external_d_C_splitAll _ _ = Strategy $ return . splitAll
 external_d_C_splitAll' :: Cover -> ConstStore -> C_Strategy a
 external_d_C_splitAll' _ _ = Strategy $ return . splitAll'
 
+external_d_C_splitAll'' :: Cover -> ConstStore -> C_Strategy a
+external_d_C_splitAll'' _ _ = Strategy $ return . splitAll''
+
 external_d_C_splitLimitDepth :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
 external_d_C_splitLimitDepth i _ _ = Strategy $ return . (splitLimitDepth $ fromCurry i)
 

@@ -22,6 +22,7 @@ module ParallelSearch
   , fairSearch''
   , splitAll
   , splitAll'
+  , splitAll''
   , splitLimitDepth
   , splitAlternating
   , splitRight
@@ -88,6 +89,9 @@ splitAll external
 
 splitAll' :: Strategy a
 splitAll' external
+
+splitAll'' :: Strategy a
+splitAll'' external
 
 splitLimitDepth :: Int -> Strategy a
 splitLimitDepth external
