@@ -1,8 +1,7 @@
 import Data.IORef
 import System.IO
-import System.Directory(doesFileExist)
+import System.Directory (doesFileExist)
 import System.IO.Unsafe
-import qualified Curry_Prelude as CP
 
 -- Implementation of Globals in Curry. We use Haskell's IORefs for temporary
 -- globals where Curry values are stored in the IORefs
@@ -87,12 +86,12 @@ instance Unifiable (C_Global a) where
     Nothing -> error "Global.lazyBind: Called lazyBind with a guard expression containing a non-equation constraint"
   fromDecision _ _ _ = error "ERROR: No fromDecision for Global"
 
-instance CP.Curry a => CP.Curry (C_Global a) where
+instance Curry_Prelude.Curry a => Curry_Prelude.Curry (C_Global a) where
   (=?=) = error "(==) is undefined for Globals"
   (<?=) = error "(<=) is undefined for Globals"
 
 
-external_d_C_global :: CP.Curry a => a -> C_GlobalSpec -> Cover -> ConstStore 
+external_d_C_global :: Curry_Prelude.Curry a => a -> C_GlobalSpec -> Cover -> ConstStore
                     -> C_Global a
 external_d_C_global val C_Temporary _ _ = ref `seq` (C_Global_Temp ref)
   where ref = unsafePerformIO (newIORef val)
@@ -104,8 +103,8 @@ external_d_C_global val (C_Persistent cname) _ _ =
          if ex then return ()
                else writeFile name (show val++"\n")
 
-external_d_C_prim_readGlobal :: CP.Curry a => C_Global a -> Cover -> ConstStore 
-                             -> CP.C_IO a
+external_d_C_prim_readGlobal :: Curry_Prelude.Curry a => C_Global a -> Cover -> ConstStore
+                             -> Curry_Prelude.C_IO a
 external_d_C_prim_readGlobal (C_Global_Temp  ref) _ _ = fromIO (readIORef ref)
 external_d_C_prim_readGlobal (C_Global_Pers name) _ _ = fromIO $
   do h <- openFile name ReadMode
@@ -113,8 +112,8 @@ external_d_C_prim_readGlobal (C_Global_Pers name) _ _ = fromIO $
      hClose h
      return (read s)
 
-external_d_C_prim_writeGlobal :: CP.Curry a => C_Global a -> a
-                              -> Cover -> ConstStore -> CP.C_IO CP.OP_Unit
+external_d_C_prim_writeGlobal :: Curry_Prelude.Curry a => C_Global a -> a
+                              -> Cover -> ConstStore -> Curry_Prelude.C_IO Curry_Prelude.OP_Unit
 external_d_C_prim_writeGlobal (C_Global_Temp ref) val _ _ =
   toCurry (writeIORef ref val)
 external_d_C_prim_writeGlobal (C_Global_Pers name) val _ _ =
