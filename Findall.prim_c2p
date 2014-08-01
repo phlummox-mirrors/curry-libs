@@ -1,0 +1,24 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE primitives SYSTEM "http://www.informatik.uni-kiel.de/~pakcs/primitives.dtd">
+<primitives>
+ <primitive name="findall" arity="1">
+  <library>prim_standard</library>
+  <entry>prim_findall[raw]</entry>
+ </primitive>
+ <primitive name="findfirst" arity="1">
+  <library>prim_standard</library>
+  <entry>prim_findfirst[raw]</entry>
+ </primitive>
+ <primitive name="try" arity="1">
+  <library>prim_standard</library>
+  <entry>prim_try[raw]</entry>
+ </primitive>
+ <primitive name="rewriteAll" arity="1">
+  <library>prim_standard</library>
+  <entry>prim_rewriteAll[raw]</entry>
+ </primitive>
+ <primitive name="rewriteSome" arity="1">
+  <library>prim_standard</library>
+  <entry>prim_rewriteSome[raw]</entry>
+ </primitive>
+</primitives>

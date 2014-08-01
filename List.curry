@@ -146,7 +146,7 @@ groupBy _  []     = []
 groupBy eq (x:xs) = (x:ys) : groupBy eq zs
                     where (ys,zs) = span (eq x) xs
 
---- Breaks a the second lsit argument into pieces separated by the first
+--- Breaks the second list argument into pieces separated by the first
 --- list argument, consuming the delimiter. An empty delimiter is
 --- invalid, and will cause an error to be raised.
 splitOn :: [a] -> [a] -> [[a]]
@@ -158,7 +158,7 @@ splitOn sep@(_:_:_) xs = go xs
                     | otherwise         = let (zs:zss) = go ys in (y:zs):zss
         len = length sep
 
---- Splits a List into components delimited by separators,
+--- Splits a list into components delimited by separators,
 --- where the predicate returns True for a separator element.
 --- The resulting components do not contain the separators.
 --- Two adjacent separators result in an empty component in the output.
@@ -176,7 +176,7 @@ split p (x:xs) | p x       = [] : split p xs
 --- @return the list of initial segments of the argument list
 inits :: [a] -> [[a]]
 inits []     =  [[]]
-inits (x:xs) =  [[]] ++ map (x:) (inits xs)
+inits (x:xs) =  [] : map (x:) (inits xs)
 
 --- Returns all final segments of a list, starting with the longest.
 --- Example: `tails [1,2,3] == [[1,2,3],[2,3],[3],[]]`

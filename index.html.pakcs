@@ -5,12 +5,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 <head>
-  <title>KiCS2 Libraries</title>
+  <title>PAKCS Libraries</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" type="text/css" href="http://www-ps.informatik.uni-kiel.de/kics2/css/bootstrap.css"/>
-  <link rel="stylesheet" type="text/css" href="http://www-ps.informatik.uni-kiel.de/kics2/css/curry.css"/>
-  <link rel="shortcut icon" href="http://www-ps.informatik.uni-kiel.de/kics2/img/favicon.ico"/>
+  <link rel="stylesheet" type="text/css" href="http://www.informatik.uni-kiel.de/~pakcs/css/bootstrap.css"/>
+  <link rel="stylesheet" type="text/css" href="http://www.informatik.uni-kiel.de/~pakcs/css/font-awesome.min.css"/>
+  <link rel="stylesheet" type="text/css" href="http://www.informatik.uni-kiel.de/~pakcs/css/curry.css"/>
+  <link rel="shortcut icon" href="http://www.informatik.uni-kiel.de/~pakcs/img/favicon.ico"/>
 </head>
 
 <body>
@@ -19,15 +20,18 @@
   <div class="navbar-inner">
     <div class="container-fluid">
       <ul class="nav">
-        <li><a href="http://www-ps.informatik.uni-kiel.de/kics2/">KiCS2</a></li>
-        <li><a href="http://www-ps.informatik.uni-kiel.de/kics2/Manual.pdf">Manual (PDF)</a></li>
-        <li><a href="http://www-ps.informatik.uni-kiel.de/kics2/lib/">Libraries</a></li>
-        <li><a href="http://www-ps.informatik.uni-kiel.de/kics2/download.html">Download</a></li>
+        <li><a href="http://www.informatik.uni-kiel.de/~pakcs/">PAKCS</a></li>
+        <li><a href="http://www.informatik.uni-kiel.de/~pakcs/Manual.pdf">Manual (PDF)</a></li>
+        <li><a href="http://www.informatik.uni-kiel.de/~pakcs/lib/">Libraries</a></li>
+        <li><a href="https://www-ps.informatik.uni-kiel.de/kics2/currygle/" target="_blank"><i class="fa fa-external-link"></i> API Search</a></li>
+        <li><a href="http://www.informatik.uni-kiel.de/~pakcs/download.html">Download</a></li>
       </ul>
       <div class="navbar-text pull-right">
         <ul class="nav">
-          <li><a href="http://www.curry-language.org/" target="_blank">Curry Homepage</a></li>
-          <li><a href="http://www.curry-language.org/documentation/report" target="_blank">Curry Report</a></li>
+          <li><a href="http://www.curry-language.org/" target="_blank"><i class="fa fa-external-link"></i> Curry Homepage</a></li>
+          <li><a href="http://www.curry-language.org/documentation/report" target="_blank">
+                <i class="fa fa-external-link"></i> Curry Report</a>
+          </li>
         </ul>
       </div>
     </div>
@@ -37,7 +41,7 @@
 <div class="container-fluid">
  <div class="row-fluid">
   <header class="hero-unit">
-   <h1>KiCS2: System Libraries</h1>
+   <h1>PAKCS: System Libraries</h1>
   </header>
  </div>
 </div>
@@ -48,6 +52,7 @@
 <div class="span3">
   <div class="well sidebar-nav">
     <ul class="nav nav-list">
+     <li><a href="https://www-ps.informatik.uni-kiel.de/kics2/currygle/" target="_blank"><i class="fa fa-external-link"></i> API Search / Curr(y)gle</a></li>
      <li><a href="#general">General libraries</a></li>
      <li><a href="#algorithms">Data structures and algorithms</a></li>
      <li><a href="#web">Libraries for web applications</a></li>
@@ -67,7 +72,7 @@
 <p>
 Here is the collection of libraries contained in the
 distribution of
-<a href="http://www-ps.informatik.uni-kiel.de/kics2/">KiCS2</a>.
+<a href="http://www.informatik.uni-kiel.de/~pakcs/">PAKCS</a>.
 Most of these libraries have been implemented during the development
 of larger Curry applications. If you have suggestions for
 changes/improvements or if you want to contribute your own library,
@@ -109,6 +114,23 @@ Curry module tester "currytest".
 This library contains some useful functions on characters.
 </dd>
 
+<dt><code><a href="CDOC/CLPFD.html">CLPFD</a></code></dt>
+<dd>
+This library supports constraint programming with
+finite domain constraints.
+</dd>
+
+<dt><code><a href="CDOC/CLPR.html">CLPR</a></code></dt>
+<dd>
+This library supports constraint programming with
+arithmetic constraints over real numbers.
+</dd>
+
+<dt><code><a href="CDOC/CLPB.html">CLPB</a></code></dt>
+<dd>
+This library provides a Boolean constraint solver based on BDDs.
+</dd>
+
 <dt><code><a href="CDOC/Combinatorial.html">Combinatorial</a></code></dt>
 <dd>
 This library contains a collection of common non-deterministic
@@ -128,6 +150,21 @@ This library supports reading/writing files in CSV
 by most spreadsheed and database applications.
 </dd>
 
+<dt><code><a href="CDOC/Database.html">Database</a></code></dt>
+<dd>
+Library for accessing and storing data in databases.
+The contents of a database is represented in this library
+as dynamic predicates that are defined by facts than can change over
+time and can be persistently stored.
+All functions in this library distinguishes between <em>queries</em> that
+access the database and <em>transactions</em> that manipulates data
+in the database. Transactions have a monadic structure.
+Both queries and transactions can be executed as I/O actions.
+However, arbitrary I/O actions cannot be embedded in transactions.
+The ideas of this library are described in
+<a href="http://www.informatik.uni-kiel.de/~mh/papers/PADL08.html">this paper</a>.
+</dd>
+
 <dt><code><a href="CDOC/Directory.html">Directory</a></code></dt>
 <dd>
 This library supports the access to the directory structure of the
@@ -141,14 +178,41 @@ distribution of the Curry implementation, e.g., compiler version,
 load paths, front end.
 </dd>
 
+<dt><code><a href="CDOC/Dynamic.html">Dynamic</a></code></dt>
+<dd>
+This library supports the manipulation of dynamic predicates,
+i.e., predicates that are defined by facts than can change over
+time and can be persistently stored.
+The ideas of this library are described in
+<a href="http://www.informatik.uni-kiel.de/~mh/papers/JFLP04_dyn.html">this paper</a>.
+<b>Remark:</b>
+<em>This library has been revised to the library <code>Database</code>.
+Thus, it might not be further supported in the future.</em>
+</dd>
+
 <dt><code><a href="CDOC/FileGoodies.html">FileGoodies</a></code></dt>
 <dd>
 A collection of useful operations when dealing with files.
 </dd>
 
+<dt><code><a href="CDOC/Findall.html">Findall</a></code></dt>
+<dd>
+This library contains some operations for encapsulating search
+which were previously part of the standard prelude.
+Since there are alternative and better approaches
+the encpasulate search, e.g., set functions,
+these operations are now in a separate module
+in order to keep the standard prelude more portable.
+</dd>
+
 <dt><code><a href="CDOC/Float.html">Float</a></code></dt>
 <dd>
 A collection of operations on floating point numbers.
+</dd>
+
+<dt><code><a href="CDOC/Function.html">Function</a></code></dt>
+<dd>
+A collection of utility operations for function application.
 </dd>
 
 <dt><code><a href="CDOC/Global.html">Global</a></code></dt>
@@ -158,6 +222,17 @@ A global entity has a name declared in the program.
 Its value can be accessed and modified by IO actions.
 Furthermore, global entities can be persistent so that
 their values are stored across different program executions.
+</dd>
+
+<dt><code><a href="CDOC/GlobalVariable.html">GlobalVariable</a></code></dt>
+<dd>
+  This library implements global variables.
+  A global variable has a name declared in the program.
+  Its value can be accessed and modified by IO actions.
+  Values of global variables can contain logic variables shared with
+  computations running in the same computation space.
+  As a consequence, values of global variables are not kept
+  across different program executions.
 </dd>
 
 <dt><code><a href="CDOC/GUI.html">GUI</a></code></dt>
@@ -193,9 +268,28 @@ A library to represent JavaScript programs.
 <dt><code><a href="CDOC/KeyDatabaseSQLite.html">KeyDatabaseSQLite</a></code></dt>
 <dd>
 This library provides a general interface for databases
-where each entry consists of a key and an info part
-and is stored in a
-<a href="http://sqlite.org/">SQLite</a> database.
+(persistent predicates based on the library <code>Database</code>)
+where each entry consists of a key and an info part.
+</dd>
+
+<dt><code><a href="CDOC/KeyDatabaseSQLite.html">KeyDatabaseSQLite</a></code></dt>
+<dd>
+This library provides a general interface for databases
+(persistent predicates based on the library <code>Database</code>)
+where each entry consists of a key and an info part.
+It reimplements the interface of the module
+<code>KeyDatabase</code> based on the
+<a href="http://sqlite.org/">SQLite</a> database engine.
+</dd>
+
+<dt><code><a href="CDOC/KeyDB.html">KeyDB</a></code></dt>
+<dd>
+This library provides a general interface for databases
+(persistent predicates) where each entry consists of a key and an info
+part.
+<b>Remark:</b>
+<em>This library has been revised to the library <code>KeyDatabase</code>.
+Thus, it might not be further supported in the future.</em>
 </dd>
 
 <dt><code><a href="CDOC/List.html">List</a></code></dt>
@@ -223,6 +317,16 @@ to support a simple implementation of parsers in Curry.
 It is adapted from Rafael Caballero and Francisco J. Lopez-Fraguas:
 A Functional Logic Perspective of Parsing,
 Proc. FLOPS'99, Springer LNCS 1722, pp. 85-99, 1999
+</dd>
+
+<dt><code><a href="CDOC/Ports.html">Ports</a></code></dt>
+<dd>
+This library supports the development of concurrent and
+distributed applications in Curry by defining ports
+for sending and receiving messages, possibly containing
+logical variables. A detailed description
+of the idea and use of ports can be found
+<a href="http://www.informatik.uni-kiel.de/~mh/papers/PPDP99.html">here</a>.
 </dd>
 
 <dt><code><a href="CDOC/Pretty.html">Pretty</a></code></dt>
@@ -268,10 +372,12 @@ to strings and vice versa.
 
 <dt><code><a href="CDOC/SetFunctions.html">SetFunctions</a></code></dt>
 <dd>
-   This library contains an implementation of set functions
+   This library contains a prototypical implementation of set functions
    to encapsulate nondeterministic computations. The general idea of
    set functions is described in
-   <a href="http://www.informatik.uni-kiel.de/~mh/papers/PPDP09.html" target="_blank">this paper</a>.
+   <a href="http://www.informatik.uni-kiel.de/~mh/papers/PPDP09.html" target="_blank">this paper</a>
+   but the implementation in this library is more restricted than
+   the general approach.
 </dd>
 
 <dt><code><a href="CDOC/Socket.html">Socket</a></code></dt>
@@ -339,12 +445,6 @@ It serves as the base for the libraries <code>SetRBT</code>
 and <code>TableRBT</code>.
 All the operations on trees are generic, i.e., one has to provide
 explicit order predicates on elements.
-</dd>
-
-<dt><code><a href="CDOC/SearchTree.html">SearchTree</a></code></dt>
-<dd>
-This library defines a representation of a search space as
-a tree and search strategies on this tree.
 </dd>
 
 <dt><code><a href="CDOC/SetRBT.html">SetRBT</a></code></dt>
@@ -426,7 +526,7 @@ in particular, downloading of documents accessible by a URL.
 Library to support type-oriented construction of web user interfaces.
 The ideas behind the application and implementation of this library are
 described in paper that is available via
-<a href="http://www-ps.informatik.uni-kiel.de/kics2/WUI">this web page</a>.
+<a href="http://www.informatik.uni-kiel.de/~pakcs/WUI/">this web page</a>.
 </dd>
 
 <dt><code><a href="CDOC/XML.html">XML</a></code></dt>

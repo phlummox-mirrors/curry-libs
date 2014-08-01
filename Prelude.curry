@@ -14,7 +14,7 @@ module Prelude where
 
 infixl 9 !!
 infixr 9 .
-infixl 7 *, `div`, `mod`
+infixl 7 *, `div`, `mod`, `quot`, `rem`
 infixl 6 +, -
 -- infixr 5 :                          -- declared together with list
 infixr 5 ++
@@ -67,7 +67,6 @@ until p f x     = if p x then x else until p f (f x)
 --- Evaluates the first argument to head normal form (which could also
 --- be a free variable) and returns the second argument.
 seq     :: _ -> a -> a
--- seq external
 x `seq` y = const y $! x
 
 --- Evaluates the argument to head normal form and returns it.
@@ -90,13 +89,11 @@ f $ x   = f x
 --- to head normal form.
 ($!)    :: (a -> b) -> a -> b
 ($!) external
--- f $! x  = x `seq` f x
 
 --- Right-associative application with strict evaluation of its argument
 --- to normal form.
 ($!!)   :: (a -> b) -> a -> b
 ($!!) external
--- f $!! x | x=:=y = f y  where y free
 
 --- Right-associative application with strict evaluation of its argument
 --- to a non-variable term.
@@ -107,7 +104,6 @@ f $# x  = f $! (ensureNotFree x)
 --- to ground normal form.
 ($##)   :: (a -> b) -> a -> b
 ($##) external
--- f $## x | x=:=y = y==y `seq` f y  where y free
 
 --- Aborts the execution with an error message.
 error :: String -> _
@@ -118,9 +114,10 @@ prim_error external
 
 --- A non-reducible polymorphic function.
 --- It is useful to express a failure in a search branch of the execution.
---- It could be defined by: <code>failed = head []</code>
+--- It could be defined by: `failed = head []`
 failed :: _
 failed external
+
 
 -- Boolean values
 -- already defined as builtin, since it is required for if-then-else
@@ -196,6 +193,7 @@ max x y = if x >= y then x else y
 min :: a -> a -> a
 min x y = if x <= y then x else y
 
+
 -- Pairs
 
 --++ data (a,b) = (a,b)
@@ -261,7 +259,8 @@ map f (x:xs)    = f x : map f xs
 
 --- Accumulates all list elements by applying a binary operator from
 --- left to right. Thus,
---- <CODE>foldl f z [x1,x2,...,xn] = (...((z `f` x1) `f` x2) ...) `f` xn</CODE>
+---
+---     foldl f z [x1,x2,...,xn] = (...((z `f` x1) `f` x2) ...) `f` xn
 foldl            :: (a -> b -> a) -> a -> [b] -> a
 foldl _ z []     = z
 foldl f z (x:xs) = foldl f (f z x) xs
@@ -272,7 +271,8 @@ foldl1 f (x:xs)  = foldl f x xs
 
 --- Accumulates all list elements by applying a binary operator from
 --- right to left. Thus,
---- <CODE>foldr f z [x1,x2,...,xn] = (x1 `f` (x2 `f` ... (xn `f` z)...))</CODE>
+---
+---     foldr f z [x1,x2,...,xn] = (x1 `f` (x2 `f` ... (xn `f` z)...))
 foldr            :: (a->b->b) -> b -> [a] -> b
 foldr _ z []     = z
 foldr f z (x:xs) = f x (foldr f z xs)
@@ -304,14 +304,14 @@ zip3 (_:_)  (_:_)  []     = []
 zip3 (x:xs) (y:ys) (z:zs) = (x,y,z) : zip3 xs ys zs
 
 --- Joins two lists into one list by applying a combination function to
---- corresponding pairs of elements. Thus <CODE>zip = zipWith (,)</CODE>
+--- corresponding pairs of elements. Thus `zip = zipWith (,)`
 zipWith                 :: (a->b->c) -> [a] -> [b] -> [c]
 zipWith _ []     _      = []
 zipWith _ (_:_)  []     = []
 zipWith f (x:xs) (y:ys) = f x y : zipWith f xs ys
 
 --- Joins three lists into one list by applying a combination function to
---- corresponding triples of elements. Thus <CODE>zip3 = zipWith3 (,,)</CODE>
+--- corresponding triples of elements. Thus `zip3 = zipWith3 (,,)`
 zipWith3                        :: (a->b->c->d) -> [a] -> [b] -> [c] -> [d]
 zipWith3 _ []     _      _      = []
 zipWith3 _ (_:_)  []     _      = []
@@ -337,12 +337,12 @@ concatMap         :: (a -> [b]) -> [a] -> [b]
 concatMap f       = concat . map f
 
 --- Infinite list of repeated applications of a function f to an element x.
---- Thus, <CODE>iterate f x = [x, f x, f (f x),...]</CODE>
+--- Thus, `iterate f x = [x, f x, f (f x),...]`
 iterate           :: (a -> a) -> a -> [a]
 iterate f x       = x : iterate f (f x)
 
 --- Infinite list where all elements have the same value.
---- Thus, <CODE>repeat x = [x, x, x,...]</CODE>
+--- Thus, `repeat x = [x, x, x,...]`
 repeat            :: a -> [a]
 repeat x          = x : repeat x
 
@@ -462,7 +462,6 @@ enumFrom n             = n : enumFrom (n+1)
 enumFromThen           :: Int -> Int -> [Int]            -- [n1,n2..]
 enumFromThen n1 n2     = iterate ((n2-n1)+) n1
 
-
 --- Generates a sequence of ascending integers.
 enumFromTo             :: Int -> Int -> [Int]            -- [n..m]
 enumFromTo n m         = if n>m then [] else n : enumFromTo (n+1) m
@@ -481,7 +480,7 @@ ord c = prim_ord $# c
 prim_ord :: Char -> Int
 prim_ord external
 
---- Converts an Unicode value into a character, fails iff the value is out of bounds
+--- Converts a Unicode value into a character, fails iff the value is out of bounds
 chr :: Int -> Char
 chr n | n >= 0 = prim_chr $# n
 -- chr n | n < 0 || n > 1114111 = failed
@@ -497,28 +496,13 @@ prim_chr external
 (+)   :: Int -> Int -> Int
 (+) external
 
--- x + y = (prim_Int_plus $# y) $# x
---
--- prim_Int_plus :: Int -> Int -> Int
--- prim_Int_plus external
-
 --- Subtracts two integers.
 (-)   :: Int -> Int -> Int
 (-) external
 
--- x - y = (prim_Int_minus $# y) $# x
---
--- prim_Int_minus :: Int -> Int -> Int
--- prim_Int_minus external
-
 --- Multiplies two integers.
 (*)   :: Int -> Int -> Int
 (*) external
-
--- x * y = (prim_Int_times $# y) $# x
---
--- prim_Int_times :: Int -> Int -> Int
--- prim_Int_times external
 
 --- Integer division. The value is the integer quotient of its arguments
 --- and always truncated towards negative infinity.
@@ -527,28 +511,36 @@ prim_chr external
 div   :: Int -> Int -> Int
 div external
 
--- prim_Int_div :: Int -> Int -> Int
--- prim_Int_div external
-
 --- Integer remainder. The value is the remainder of the integer division and
 --- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
 --- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
---- and the value of <code>-15 `mod` 4</code> is <code>1</code>.
+--- and the value of <code>-15 `mod` 4</code> is <code>-3</code>.
 mod   :: Int -> Int -> Int
 mod external
 
--- prim_Int_mod :: Int -> Int -> Int
--- prim_Int_mod external
-
+--- Returns an integer (quotient,remainder) pair.
+--- The value is the integer quotient of its arguments
+--- and always truncated towards negative infinity.
 divMod :: Int -> Int -> (Int, Int)
 divMod external
 
+--- Integer division. The value is the integer quotient of its arguments
+--- and always truncated towards zero.
+--- Thus, the value of <code>13 `quot` 5</code> is <code>2</code>,
+--- and the value of <code>-15 `quot` 4</code> is <code>-3</code>.
 quot :: Int -> Int -> Int
 quot external
 
+--- Integer remainder. The value is the remainder of the integer division and
+--- it obeys the rule <code>x `rem` y = x - y * (x `quot` y)</code>.
+--- Thus, the value of <code>13 `rem` 5</code> is <code>3</code>,
+--- and the value of <code>-15 `rem` 4</code> is <code>-3</code>.
 rem :: Int -> Int -> Int
 rem external
 
+--- Returns an integer (quotient,remainder) pair.
+--- The value is the integer quotient of its arguments
+--- and always truncated towards zero.
 quotRem :: Int -> Int -> (Int, Int)
 quotRem external
 
@@ -559,9 +551,6 @@ negate x = 0 - x
 --- Unary minus on Floats. Usually written as "-e".
 negateFloat :: Float -> Float
 negateFloat external
-
--- prim_negateFloat :: Float -> Float
--- prim_negateFloat external
 
 
 -- Constraints
@@ -654,11 +643,6 @@ readFile f = prim_readFile $## f
 prim_readFile          :: String -> IO String
 prim_readFile external
 
--- TODO ask Michael how this function was used
--- for internal implementation of readFile:
--- prim_readFileContents          :: String -> String
--- prim_readFileContents external
-
 --- An action that writes a file.
 --- @param filename - The name of the file to be written.
 --- @param contents - The contents to be written to the file.
@@ -694,12 +678,17 @@ getLine           = do c <- getChar
                                   else do cs <- getLine
                                           return (c:cs)
 
+----------------------------------------------------------------------------
 -- Error handling in the I/O monad:
 
 --- The (abstract) type of error values.
---- Currently, it contains only an error message as a string,
---- but it might be extended in the future to distinguish
---- various error situations.
+--- Currently, it distinguishes between general IO errors,
+--- user-generated errors (see 'userError'), failures and non-determinism
+--- errors during IO computations. These errors can be caught by 'catch'
+--- and shown by 'showError'.
+--- Each error contains a string shortly explaining the error.
+--- This type might be extended in the future to distinguish
+--- further error situations.
 data IOError
   = IOError     String -- normal IO error
   | UserError   String -- user-specified error
@@ -720,18 +709,20 @@ prim_ioError external
 
 --- Shows an error values as a string.
 showError :: IOError -> String
-showError (IOError     s) = "i/o error: "   ++ s
+showError (IOError     s) = "i/o error: "    ++ s
 showError (UserError   s) = "user error: "   ++ s
 showError (FailError   s) = "fail error: "   ++ s
 showError (NondetError s) = "nondet error: " ++ s
 
 --- Catches a possible error or failure during the execution of an
---- I/O action. <code>(catch act errfun)</code> executes the I/O action
---- <code>act</code>. If an exception or failure occurs
---- during this I/O action, the function <code>errfun</code> is applied
+--- I/O action. `(catch act errfun)` executes the I/O action
+--- `act`. If an exception or failure occurs
+--- during this I/O action, the function `errfun` is applied
 --- to the error value.
 catch :: IO a -> (IOError -> IO a) -> IO a
 catch external
+
+----------------------------------------------------------------------------
 
 --- Converts an arbitrary term into an external string representation.
 show    :: _ -> String
@@ -783,47 +774,68 @@ foldIO f a (x:xs)  =  f a x >>= \fax -> foldIO f fax xs
 liftIO :: (a -> b) -> IO a -> IO b
 liftIO f m = m >>= return . f
 
+--- Like `mapIO`, but with flipped arguments.
+---
+--- This can be useful if the definition of the function is longer
+--- than those of the list, like in
+---
+--- forIO [1..10] $ \n -> do
+---   ...
+forIO :: [a] -> (a -> IO b) -> IO [b]
+forIO xs f = mapIO f xs
+
+--- Like `mapIO_`, but with flipped arguments.
+---
+--- This can be useful if the definition of the function is longer
+--- than those of the list, like in
+---
+--- forIO_ [1..10] $ \n -> do
+---   ...
+forIO_ :: [a] -> (a -> IO b) -> IO ()
+forIO_ xs f = mapIO_ f xs
+
+--- Performs an `IO` action unless the condition is met.
+unless :: Bool -> IO () -> IO ()
+unless p act = if p then done else act
+
+--- Performs an `IO` action when the condition is met.
+when :: Bool -> IO () -> IO ()
+when p act = if p then act else done
+
 ----------------------------------------------------------------
 -- Non-determinism and free variables:
 
---- Non-deterministic choice <EM>par excellence</EM>.
---- The value of <EM>x ? y</EM> is either <EM>x</EM> or <EM>y</EM>.
+--- Non-deterministic choice _par excellence_.
+--- The value of `x ? y` is either `x` or `y`.
 --- @param x - The right argument.
 --- @param y - The left argument.
---- @return either <EM>x</EM> or <EM>y</EM> non-deterministically.
+--- @return either `x` or `y` non-deterministically.
 (?)   :: a -> a -> a
-(?) external
--- x ? _ = x
--- _ ? y = y
+x ? _ = x
+_ ? y = y
 
 
 --- Evaluates to a fresh free variable.
 unknown :: _
 unknown = let x free in x
 
-------------------------------------------------------------------------
--- Encapsulated search:
---
--- The operations for encapsulated search are not supported in KiCS2
--- as defined in the Curry report.
--- Instead, KiCS2 offers alternative features for encapsulated
--- search, see libraries AllSolutions and SearchTree (for strong
--- encapsulated search) and SetFunctions (for weak encapsulated search).
-------------------------------------------------------------------------
+----------------------------------------------------------------
+--- Identity function used by the partial evaluator
+--- to mark expressions to be partially evaluated.
+PEVAL   :: a -> a
+PEVAL x = x
 
 --- Evaluates the argument to normal form and returns it.
 normalForm :: a -> a
 normalForm x = id $!! x
--- normalForm x | x=:=y = y where y free
 
 --- Evaluates the argument to ground normal form and returns it.
 --- Suspends as long as the normal form of the argument is not ground.
 groundNormalForm :: a -> a
 groundNormalForm x = id $## x
--- groundNormalForm x | y==y = y where y = normalForm x
 
 -- Only for internal use:
--- Represenation of higher-order applications in FlatCurry.
+-- Representation of higher-order applications in FlatCurry.
 apply :: (a -> b) -> a -> b
 apply external
 
