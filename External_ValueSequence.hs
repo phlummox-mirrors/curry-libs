@@ -1,17 +1,4 @@
-{-# LANGUAGE CPP #-}
 import GHC.Exts (Int (I#),(<#))
-
-#if __GLASGOW_HASKELL__ > 706
-import GHC.Exts (isTrue#)
-#endif
-
--- #endimport - do not remove this line!
-
-#if !(__GLASGOW_HASKELL__ > 706)
-isTrue# :: Bool -> Bool
-{-# INLINE isTrue# #-}
-isTrue# x = x
-#endif
 
 external_d_OP_bar_plus_plus_bar
   :: Curry_Prelude.Curry a

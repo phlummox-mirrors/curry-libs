@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, MagicHash #-}
+{-# LANGUAGE BangPatterns, MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
 
 import qualified Control.Exception as C
@@ -15,18 +15,6 @@ import CurryException
 import Debug          (internalError)
 import FailInfo       (customFail)
 import PrimTypes
-
-#if __GLASGOW_HASKELL__ > 706
-import GHC.Exts (isTrue#)
-#endif
-
--- #endimport - do not remove this line!
-
-#if !(__GLASGOW_HASKELL__ > 706)
-isTrue# :: Bool -> Bool
-{-# INLINE isTrue# #-}
-isTrue# x = x
-#endif
 
 -- ---------------------------------------------------------------------------
 -- Curry types
