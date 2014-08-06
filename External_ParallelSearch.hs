@@ -5,8 +5,7 @@ import MonadSearch
 import MonadList
 import Strategies
 import Control.Parallel.Strategies
-import Control.Concurrent.Bag.TaskBufferSTM (SplitFunction, TaskBufferSTM (..), splitVertical, splitHalf)
-import Control.Concurrent.Bag.Safe (SplitFunction, TaskBufferSTM (..), takeFirst)
+import Control.Concurrent.Bag.STM  (SplitFunction, splitVertical, splitHalf, takeFirst)
 import qualified Curry_Prelude as CP
 
 external_d_C_getAllValues :: NormalForm a =>

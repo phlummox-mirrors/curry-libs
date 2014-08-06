@@ -6,7 +6,7 @@ import Strategies
 import qualified Curry_ValueSequence as VS
 import Control.Parallel.Strategies
 import Control.Concurrent.Bag.Task (Interruptible (..))
-import qualified Control.Concurrent.Bag.Implicit as Implicit
+import qualified Control.Concurrent.Bag.STM as STMBag
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Concurrent.STM (TChan)
 
@@ -68,7 +68,7 @@ listOfValueSequences cv cs (x:xs) = VS.d_OP_bar_plus_plus_bar x (listOfValueSequ
 
 external_d_C_parBfsBagStrategy :: Curry_Prelude.Curry a => C_SearchTree a -> Cover -> ConstStore -> VS.C_ValueSequence a
 external_d_C_parBfsBagStrategy tree cv cs =
-  listOfValueSequences cv cs $ unsafePerformIO $ Implicit.newInterruptibleBag Implicit.Queue (Just (Implicit.takeFirst :: Implicit.SplitFunction (VS.C_ValueSequence a))) [bfsTask cv cs tree]
+  listOfValueSequences cv cs $ unsafePerformIO $ STMBag.lazyTaskBag STMBag.Queue (Just (STMBag.takeFirst :: STMBag.SplitFunction (VS.C_ValueSequence a))) [bfsTask cv cs tree]
 
 bfsTask :: Curry_Prelude.Curry a => Cover -> ConstStore -> C_SearchTree a -> Interruptible (VS.C_ValueSequence a)
 bfsTask cv cs t =
@@ -92,15 +92,15 @@ bfsTask cv cs t =
 
 external_d_C_parDfsBagStrategy :: Curry_Prelude.Curry a => C_SearchTree a -> Cover -> ConstStore -> VS.C_ValueSequence a
 external_d_C_parDfsBagStrategy tree cv cs =
-  listOfValueSequences cv cs $ unsafePerformIO $ Implicit.newTaskBag Implicit.Stack (Just (Implicit.takeFirst :: Implicit.SplitFunction (VS.C_ValueSequence a))) [dfsTask cv cs tree]
+  listOfValueSequences cv cs $ unsafePerformIO $ STMBag.lazyTaskBag STMBag.Stack (Just (STMBag.takeFirst :: STMBag.SplitFunction (VS.C_ValueSequence a))) [dfsTask cv cs tree]
 
-dfsTask :: Curry_Prelude.Curry a => Cover -> ConstStore -> C_SearchTree a -> Implicit.TaskIO (VS.C_ValueSequence a) (Maybe (VS.C_ValueSequence a))
+dfsTask :: Curry_Prelude.Curry a => Cover -> ConstStore -> C_SearchTree a -> STMBag.TaskIO (VS.C_ValueSequence a) (Maybe (VS.C_ValueSequence a))
 dfsTask cv cs t =
   case t of
     C_Fail  d -> return $ Just $ VS.d_C_failVS d cv cs
     C_Value x -> return $ Just $ VS.d_C_addVS  x (VS.d_C_emptyVS cv cs) cv cs
     C_Or l r -> do
-      Implicit.addTaskIO $ dfsTask cv cs r
+      STMBag.addTask $ dfsTask cv cs r
       dfsTask cv cs l
     Choice_C_SearchTree cv' i l r ->
       return $ Just $ narrow cv' i (external_d_C_parDfsBagStrategy l cv cs) (external_d_C_parDfsBagStrategy r cv cs)
