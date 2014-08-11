@@ -2,7 +2,6 @@
 import System.IO
 import Control.Monad
 import Control.Applicative
-import Control.Parallel.TreeSearch
 import MonadSearch
 import GHC.Exts (Int (I#), (<#))
 

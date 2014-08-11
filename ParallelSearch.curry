@@ -15,39 +15,14 @@ module ParallelSearch
   ( getAllValues
   , getOneValue
   , getLazyValues
-  , parSearch
   , fairSearch
   , conSearch
-  , fairSearch'
-  , fairSearch''
   , splitAll
-  , splitAll'
-  , splitAll''
-  , splitLimitDepth
-  , splitAlternating
-  , splitRight
-  , splitRight'
-  , splitLeft
-  , splitLeft'
-  , splitPower
   , bfsParallel
-  , bfsParallel'
-  , bfsParallel''
   , dfsBag
-  , dfsBagCon
-  , dfsBagLimit
-  , dfsBagRight
-  , dfsBagLeft
   , fdfsBag
-  , fdfsBagCon
   , bfsBag
-  , bfsBagCon
   , fairBag
-  , fairBagCon
-  , takeFirst
-  , splitVertical
-  , splitHalf
-  , commonBuffer
   ) where
 
 --- Gets all values of an expression using the given Strategy. 
@@ -63,9 +38,6 @@ getLazyValues external
 
 data Strategy _ -- precise structure internally defined
 
---- Parallel strategy using Haskells par from Control.Parallel.
-parSearch :: Strategy a
-parSearch external
 --- Parallel strategy providing a fair search with concurrency.
 fairSearch :: Strategy a
 fairSearch external
@@ -75,44 +47,11 @@ fairSearch external
 conSearch :: Int -> Strategy a
 conSearch external
 
-fairSearch' :: Strategy a
-fairSearch' external
-
-fairSearch'' :: Strategy a
-fairSearch'' external
-
 -- Strategies using Haskells Eval Monad
 
 --- Parallel strategy using Haskells Eval monad.
 splitAll :: Strategy a
 splitAll external
-
-splitAll' :: Strategy a
-splitAll' external
-
-splitAll'' :: Strategy a
-splitAll'' external
-
-splitLimitDepth :: Int -> Strategy a
-splitLimitDepth external
-
-splitAlternating :: Int -> Strategy a
-splitAlternating external
-
-splitPower :: Strategy a
-splitPower external
-
-splitRight :: Int -> Strategy a
-splitRight external
-
-splitRight' :: Int -> Strategy a
-splitRight' external
-
-splitLeft :: Int -> Strategy a
-splitLeft external
-
-splitLeft' :: Int -> Strategy a
-splitLeft' external
 
 --- Parallel breadth-first strategy.
 --- Parallel strategy having the same lavel of completeness as the normal
@@ -122,55 +61,14 @@ splitLeft' external
 bfsParallel :: Strategy a
 bfsParallel external
 
-bfsParallel' :: Strategy a
-bfsParallel' external
-
-bfsParallel'' :: Strategy a
-bfsParallel'' external
-
-data SplitStrategy _ -- internally defined
-
-dfsBag :: SplitStrategy a -> Strategy a
+dfsBag :: Strategy a
 dfsBag external
 
-dfsBagLimit :: SplitStrategy a -> Int -> Strategy a
-dfsBagLimit external
-
-dfsBagRight :: SplitStrategy a -> Int -> Strategy a
-dfsBagRight external
-
-dfsBagLeft :: SplitStrategy a -> Int -> Strategy a
-dfsBagLeft external
-
-dfsBagCon :: Strategy a
-dfsBagCon external
-
-fdfsBag :: SplitStrategy a -> Strategy a
+fdfsBag :: Strategy a
 fdfsBag external
 
-fdfsBagCon :: Strategy a
-fdfsBagCon external
-
-bfsBag :: SplitStrategy a -> Strategy a
+bfsBag :: Strategy a
 bfsBag external
 
-bfsBagCon :: Strategy a
-bfsBagCon external
-
-fairBag :: SplitStrategy a -> Strategy a
+fairBag :: Strategy a
 fairBag external
-
-fairBagCon :: Strategy a
-fairBagCon external
-
-commonBuffer :: SplitStrategy a
-commonBuffer external
-
-takeFirst :: SplitStrategy a
-takeFirst external
-
-splitVertical :: SplitStrategy a
-splitVertical external
-
-splitHalf :: SplitStrategy a
-splitHalf external

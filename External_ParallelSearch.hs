@@ -5,7 +5,6 @@ import MonadSearch
 import MonadList
 import Strategies
 import Control.Parallel.Strategies
-import Control.Concurrent.Bag.STM  (SplitFunction, splitVertical, splitHalf, takeFirst)
 import qualified Curry_Prelude as CP
 
 external_d_C_getAllValues :: NormalForm a =>
@@ -72,151 +71,42 @@ fromIOListStrategy s = Functions (\t -> s t >>= listIOToMaybe )
                                  (\t -> s t >>= evalIOList )
                                  (\t -> listIOToLazy $ s t)
 
-external_d_C_parSearch :: Cover -> ConstStore -> C_Strategy a
-external_d_C_parSearch _ _ = Strategy $ return . parSearch
-
 external_d_C_fairSearch :: Cover -> ConstStore -> C_Strategy a
 external_d_C_fairSearch _ _ = Strategy fairSearch
 
 external_d_C_conSearch :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
 external_d_C_conSearch i _ _ = Strategy (conSearch $ fromCurry i)
 
-external_d_C_fairSearch' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairSearch' _ _ = Strategy fairSearch'
-
-external_d_C_fairSearch'' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairSearch'' _ _ = Strategy fairSearch''
-
 external_d_C_splitAll :: Cover -> ConstStore -> C_Strategy a
 external_d_C_splitAll _ _ = Strategy $ return . splitAll
-
-external_d_C_splitAll' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitAll' _ _ = Strategy $ return . splitAll'
-
-external_d_C_splitAll'' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitAll'' _ _ = Strategy $ return . splitAll''
-
-external_d_C_splitLimitDepth :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitLimitDepth i _ _ = Strategy $ return . (splitLimitDepth $ fromCurry i)
-
-external_d_C_splitAlternating :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitAlternating i _ _ = Strategy $ return . (splitAlternating $ fromCurry i)
-
-external_d_C_splitRight :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitRight i _ _ = Strategy $ return . (splitRight $ fromCurry i)
-
-external_d_C_splitRight' :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitRight' i _ _ = Strategy $ return . (splitRight' $ fromCurry i)
-
-external_d_C_splitLeft :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitLeft i _ _ = Strategy $ return . (splitLeft $ fromCurry i)
-
-external_d_C_splitLeft' :: CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_splitLeft' i _ _ = Strategy $ return . (splitLeft' $ fromCurry i)
-
-external_d_C_splitPower :: Cover -> ConstStore -> C_Strategy a
-external_d_C_splitPower _ _ = Strategy $ return . splitPower
 
 external_d_C_bfsParallel :: Cover -> ConstStore -> C_Strategy a
 external_d_C_bfsParallel _ _ = Strategy $ return . bfsParallel
 
-external_d_C_bfsParallel' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsParallel' _ _ = Strategy $ return . bfsParallel'
-
-external_d_C_bfsParallel'' :: Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsParallel'' _ _ = Strategy $ return . bfsParallel''
-
-data C_SplitStrategy a
-    = SplitStrategy { getSplit :: Maybe (SplitFunction a) }
-
-external_d_C_dfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBag split _ _ =
-  let s  = flip $ dfsBag $ getSplit split
+external_d_C_dfsBag :: Cover -> ConstStore -> C_Strategy a
+external_d_C_dfsBag _ _ =
+  let s  = flip $ dfsBag
   in Functions (s getResult)
                (s getAllResults)
-               (dfsBagLazy $ getSplit split)
+               dfsBagLazy
 
-external_d_C_dfsBagLimit :: C_SplitStrategy a -> CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBagLimit split cn _ _ =
-  let n = fromCurry cn
-      s = flip $ dfsBagLimit (getSplit split) n
+external_d_C_fdfsBag :: Cover -> ConstStore -> C_Strategy a
+external_d_C_fdfsBag _ _ =
+  let s = flip $ fdfsBag
   in Functions (s getResult)
                (s getAllResults)
-               (dfsBagLimitLazy (getSplit split) n)
+               fdfsBagLazy
 
-external_d_C_dfsBagRight :: C_SplitStrategy a -> CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBagRight split cn _ _ =
-  let n = fromCurry cn
-      s = flip $ dfsBagRight (getSplit split) n
+external_d_C_bfsBag :: Cover -> ConstStore -> C_Strategy a
+external_d_C_bfsBag _ _ =
+  let s = flip $ bfsBag
   in Functions (s getResult)
                (s getAllResults)
-               (dfsBagRightLazy (getSplit split) n)
+               bfsBagLazy
 
-external_d_C_dfsBagLeft :: C_SplitStrategy a -> CP.C_Int -> Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBagLeft split cn _ _ =
-  let n = fromCurry cn
-      s = flip $ dfsBagLeft (getSplit split) n
+external_d_C_fairBag :: Cover -> ConstStore -> C_Strategy a
+external_d_C_fairBag _ _ =
+  let s = flip $ fairBag
   in Functions (s getResult)
                (s getAllResults)
-               (dfsBagLeftLazy (getSplit split) n)
-
-external_d_C_dfsBagCon :: Cover -> ConstStore -> C_Strategy a
-external_d_C_dfsBagCon _ _ =
-  let s = flip $ dfsBagCon
-  in Functions (s getResult)
-               (s getAllResults)
-               dfsBagConLazy
-
-external_d_C_fdfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_fdfsBag split _ _ =
-  let s = flip $ fdfsBag $ getSplit split
-  in Functions (s getResult)
-               (s getAllResults)
-               (fdfsBagLazy $ getSplit split)
-
-external_d_C_fdfsBagCon :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fdfsBagCon _ _ =
-  let s = flip $ fdfsBagCon
-  in Functions (s getResult)
-               (s getAllResults)
-               fdfsBagConLazy
-
-external_d_C_bfsBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsBag split _ _ =
-  let s = flip $ bfsBag $ getSplit split
-  in Functions (s getResult)
-               (s getAllResults)
-               (bfsBagLazy $ getSplit split)
-
-external_d_C_bfsBagCon :: Cover -> ConstStore -> C_Strategy a
-external_d_C_bfsBagCon _ _ =
-  let s = flip $ bfsBagCon
-  in Functions (s getResult)
-               (s getAllResults)
-               bfsBagConLazy
-
-external_d_C_fairBag :: C_SplitStrategy a -> Cover -> ConstStore -> C_Strategy a
-external_d_C_fairBag split _ _ =
-  let s = flip $ fairBag $ getSplit split
-  in Functions (s getResult)
-               (s getAllResults)
-               (fairBagLazy $ getSplit split)
-
-external_d_C_fairBagCon :: Cover -> ConstStore -> C_Strategy a
-external_d_C_fairBagCon _ _ =
-  let s = flip $ fairBagCon
-  in Functions (s getResult)
-               (s getAllResults)
-               fairBagConLazy
-
-external_d_C_commonBuffer :: Cover -> ConstStore -> C_SplitStrategy a
-external_d_C_commonBuffer _ _ = SplitStrategy Nothing
-
-external_d_C_takeFirst :: Cover -> ConstStore -> C_SplitStrategy a
-external_d_C_takeFirst _ _ = SplitStrategy $ Just takeFirst
-
-external_d_C_splitVertical :: Cover -> ConstStore -> C_SplitStrategy a
-external_d_C_splitVertical _ _ = SplitStrategy $ Just splitVertical
-
-external_d_C_splitHalf :: Cover -> ConstStore -> C_SplitStrategy a
-external_d_C_splitHalf _ _ = SplitStrategy $ Just splitHalf
+               fairBagLazy
