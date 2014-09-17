@@ -4,7 +4,7 @@ module CLPFD2
   , (=#), (/=#), (<#), (<=#), (>#), (>=#), (/\)
   , (!#)
   , loopall
-  , solve, solveVars
+  , solveFD, solveFDVars
   , Option (..)
   ) where
 
@@ -112,11 +112,11 @@ c1 /\ c2 = (prim_FD_and $!! c1) $!! c2
 prim_FD_and :: FDConstr -> FDConstr -> FDConstr
 prim_FD_and external
 
-solve :: [Option] -> FDConstr -> [[Int]]
-solve external
+solveFD :: [Option] -> FDConstr -> [[Int]]
+solveFD external
 
-solveVars :: [Option] -> FDConstr -> [FDExpr] -> [[Int]]
-solveVars external
+solveFDVars :: [Option] -> FDConstr -> [FDExpr] -> [[Int]]
+solveFDVars external
 
 -- labeling and solving options
 -- if no option is given, the Overton solver with in order labeling is used

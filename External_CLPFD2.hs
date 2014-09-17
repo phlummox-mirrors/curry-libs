@@ -600,15 +600,15 @@ genDomConstr = do
                                             dom = (asExpr l, asExpr u)
                                         in forall col (\v -> v @: dom)
 
-external_d_C_solve :: OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
+external_d_C_solveFD :: OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
                    -> OP_List (OP_List C_Int)
-external_d_C_solve opts cs _ _ = let (solver,strategy) = getOpts opts
-                                     solutions = runSolver solver strategy cs []
-                                 in toCurry solutions
+external_d_C_solveFD opts cs _ _ = let (solver,strategy) = getOpts opts
+                                       solutions = runSolver solver strategy cs []
+                                   in toCurry solutions
 
-external_d_C_solveVars :: OP_List C_Option -> C_FDConstr -> OP_List C_FDExpr
+external_d_C_solveFDVars :: OP_List C_Option -> C_FDConstr -> OP_List C_FDExpr
                        -> Cover -> ConstStore -> OP_List (OP_List C_Int)
-external_d_C_solveVars opts cs lvars _ _
+external_d_C_solveFDVars opts cs lvars _ _
   = let (solver,strategy) = getOpts opts
         solutions = runSolver solver strategy cs (fromCurry lvars)
     in toCurry solutions
