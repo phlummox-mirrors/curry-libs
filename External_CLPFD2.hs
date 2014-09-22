@@ -2,8 +2,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
 
-import qualified Control.Monad.State as S (State, gets, modify, evalState)
-import Data.List (partition)
+import qualified Control.Monad.State as S (State, gets, modify, runState, evalState)
+import Data.List (partition, transpose)
 import qualified Data.Map as Map
 import Data.Maybe (listToMaybe)
 import qualified Data.Set as Set
@@ -18,7 +18,8 @@ import Control.CP.FD.FD (FDInstance, FDSolver(..))
 import Control.CP.FD.Interface (labelCol)
 import Control.CP.FD.Model (Model, ModelInt, ModelCol, ModelIntTerm(..), ModelFunctions, asExpr)
 import Control.CP.FD.OvertonFD.OvertonFD (OvertonFD)
-import Control.CP.FD.Solvers (dfs, it, fs)
+import Control.CP.FD.Solvers (dfs, bfs, pfs, it, fs)
+import Control.CP.Queue
 import Control.CP.SearchTree (Tree, MonadTree(..))
 import Data.Expr.Data (BoolExpr (BoolConst), ColExpr (ColList))
 import Data.Expr.Sugar ((!), (@=), (@/=), (@<), (@<=), (@+), (@-), (@*), (@&&), (@:), xsum, allDiff, list, forall, loopall, ToBoolExpr(..), size)
@@ -192,6 +193,101 @@ instance Curry C_FDExpr where
   (<?=) (FDSum xs) (FDSum ys) d cs =
     foldr (\(x,y) z -> d_OP_amp_amp ((x <?= y) d cs) z d cs) C_True (zip xs ys)
   (<?=) _ _ d _ = C_False
+
+instance Eq C_FDExpr where
+  (FDVal x)                      == (FDVal y)                      = x == y
+  (FDVar i _)                    == (FDVar j _)                    = i == j
+  (FDParam i)                    == (FDParam j)                    = i == j
+  (ExprHole i)                   == (ExprHole j)                   = i == j
+  (FDAt c1 e1)                   == (FDAt c2 e2)                   = c1 == c2 && e1 == e2
+  (FDArith op1 x1 y1)            == (FDArith op2 x2 y2)            = op1 == op2 && x1 == x2 && y1 == y2
+  (FDSum xs)                     == (FDSum ys)                     = xs == ys
+  (Choice_C_FDExpr cd1 i1 x1 y1) == (Choice_C_FDExpr cd2 i2 x2 y2) = cd1 == cd2 && i1 == i2 && x1 == x2 && y1 == y2
+  (Choices_C_FDExpr cd1 i1 xs1)  == (Choices_C_FDExpr cd2 i2 xs2)  = cd1 == cd2 && i1 == i2 && xs1 == xs2
+  (Fail_C_FDExpr cd1 info1)      == (Fail_C_FDExpr cd2 info2)      = cd1 == cd2 && info1 == info2
+  (Guard_C_FDExpr cd1 cs1 x1)    == (Guard_C_FDExpr cd2 cs2 x2)    = cd1 == cd2 && cs1 == cs2 && x1 == x2
+  _                              == _                              = False
+
+instance Ord C_FDExpr where
+  compare (FDVal x)                      (FDVal y)                      = compare x y
+  compare (FDVal _)                      _                              = LT
+  compare (FDVar _ _)                    (FDVal _)                      = GT
+  compare (FDVar i _)                    (FDVar j _)                    = compare i j
+  compare (FDVar _ _)                    _                              = LT
+  compare (FDParam _)                    (FDVal _)                      = GT
+  compare (FDParam _)                    (FDVar _ _)                    = GT
+  compare (FDParam i)                    (FDParam j)                    = compare i j
+  compare (FDParam _)                    _                              = LT
+  compare (ExprHole _)                   (FDVal _)                      = GT
+  compare (ExprHole _)                   (FDVar _ _)                    = GT
+  compare (ExprHole _)                   (FDParam _)                    = GT
+  compare (ExprHole i)                   (ExprHole j)                   = compare i j
+  compare (ExprHole _)                   _                              = LT
+  compare (FDAt _ _)                     (FDVal _)                      = GT
+  compare (FDAt _ _)                     (FDVar _ _)                    = GT
+  compare (FDAt _ _)                     (FDParam _)                    = GT
+  compare (FDAt _ _)                     (ExprHole _)                   = GT
+  compare (FDAt c1 e1)                   (FDAt c2 e2)                   =
+    case compare c1 c2 of
+         LT -> LT
+         EQ -> compare e1 e2
+         GT -> GT
+  compare (FDAt _ _)                     _                              = LT
+  compare (FDArith _ _ _)                (FDVal _)                      = GT
+  compare (FDArith _ _ _)                (FDVar _ _)                    = GT
+  compare (FDArith _ _ _)                (FDParam _)                    = GT
+  compare (FDArith _ _ _)                (ExprHole _)                   = GT
+  compare (FDArith _ _ _)                (FDAt _ _)                     = GT
+  compare (FDArith op1 x1 y1)            (FDArith op2 x2 y2)            =
+    case compare op1 op2 of
+         LT -> LT
+         GT -> GT
+         EQ -> case compare x1 x2 of
+                    LT -> LT
+                    GT -> GT
+                    EQ -> compare y1 y2
+  compare (FDArith _ _ _)                _                              = LT
+  compare (FDSum xs)                     (FDSum ys)                     = compare xs ys
+  compare (FDSum _)                      (Choice_C_FDExpr _ _ _ _)      = LT
+  compare (FDSum _)                      (Choices_C_FDExpr _ _ _)       = LT
+  compare (FDSum _)                      (Fail_C_FDExpr _ _)            = LT
+  compare (FDSum _)                      (Guard_C_FDExpr _ _ _)         = LT
+  compare (FDSum _)                      _                              = GT
+  compare (Choice_C_FDExpr cd1 i1 x1 y1) (Choice_C_FDExpr cd2 i2 x2 y2) =
+    case compare cd1 cd2 of
+         LT -> LT
+         GT -> GT
+         EQ -> case compare (getKey i1) (getKey i2) of
+                    LT -> LT
+                    GT -> GT
+                    EQ -> case compare x1 x2 of
+                               LT -> LT
+                               GT -> GT
+                               EQ -> compare y1 y2
+  compare (Choice_C_FDExpr _ _ _ _)      (Choices_C_FDExpr _ _ _)       = LT
+  compare (Choice_C_FDExpr _ _ _ _)      (Fail_C_FDExpr _ _)            = LT
+  compare (Choice_C_FDExpr _ _ _ _)      (Guard_C_FDExpr _ _ _)         = LT
+  compare (Choice_C_FDExpr _ _ _ _)      _                              = GT
+  compare (Choices_C_FDExpr cd1 i1 xs1)  (Choices_C_FDExpr cd2 i2 xs2)  =
+    case compare cd1 cd2 of
+         LT -> LT
+         GT -> GT
+         EQ -> case compare (getKey i1) (getKey i2) of
+                    LT -> LT
+                    GT -> GT
+                    EQ -> compare xs1 xs2
+  compare (Choices_C_FDExpr _ _ _)       (Fail_C_FDExpr _ _)            = LT
+  compare (Choices_C_FDExpr _ _ _)       (Guard_C_FDExpr _ _ _)         = LT
+  compare (Choices_C_FDExpr _ _ _)       _                              = GT
+  compare (Fail_C_FDExpr cd1 _)          (Fail_C_FDExpr cd2 _)          = compare cd1 cd2
+  compare (Fail_C_FDExpr _ _)            (Guard_C_FDExpr _ _ _)         = LT
+  compare (Fail_C_FDExpr _ _)            _                              = GT
+  compare (Guard_C_FDExpr cd1 _ x1)      (Guard_C_FDExpr cd2 _ x2)      =
+    case compare cd1 cd2 of
+         LT -> LT
+         GT -> GT
+         EQ -> compare x1 x2
+  compare (Guard_C_FDExpr _ _ _)         _                              = GT
 
 instance ConvertCurryHaskell C_FDExpr C_FDExpr where
   toCurry   = id
@@ -454,7 +550,7 @@ external_nd_C_prim_FD_loopall from to constr s cd cs
 type TLM = S.State TLState
 
 -- mapping of domains to FD variables
-type VarMap = Map.Map Domain (Set.Set ModelInt)
+type VarMap = Map.Map Domain (Set.Set C_FDExpr)
 
 -- translation state
 -- stores all FD variables occurring during translation
@@ -490,21 +586,21 @@ newParam = do
 
 -- get a MCP collection of all FD variables
 -- which were (so far) collected in the varMap during the translation process
-getAllVars :: TLM ModelCol
+getAllVars :: TLM [C_FDExpr]
 getAllVars = do
   vm <- getVarMap
-  let col = (list . Set.elems . Set.unions . Map.elems) vm
-  return col
+  let vars = (Set.elems . Set.unions . Map.elems) vm
+  return vars
 
 -- Translation of FD expressions into MCP terms
 tlFDExpr :: C_FDExpr -> TLM ModelInt
 tlFDExpr (FDVal v) = return (asExpr v)
-tlFDExpr (FDVar i dom) = do
+tlFDExpr var@(FDVar i dom) = do
   vm <- getVarMap
   let i'  = fromInteger i
-      var = asExpr (ModelIntVar i' :: ModelIntTerm ModelFunctions)
+      mcpVar = asExpr (ModelIntVar i' :: ModelIntTerm ModelFunctions)
   setVarMap $ Map.insertWith Set.union dom (Set.singleton var) vm
-  return var
+  return mcpVar
 tlFDExpr (FDParam i) = do
   let i'  = fromInteger i
       par = asExpr (ModelIntVar i' :: ModelIntTerm ModelFunctions)
@@ -581,7 +677,7 @@ genMCPModel cs lvars = do
   return $ genModelTree model mcpLVars
   where
     getLabelVars :: [C_FDExpr] -> TLM ModelCol
-    getLabelVars []   = getAllVars
+    getLabelVars []   = getAllVars >>= tlFDExprList
     getLabelVars vars = tlFDExprList vars
 
     genModelTree :: FDSolver s => Model -> ModelCol
@@ -592,73 +688,215 @@ genMCPModel cs lvars = do
 
 genDomConstr :: TLM Model
 genDomConstr = do
-  vm <- getVarMap
-  let domConstrs = map genDomConstr' $ Map.assocs vm
+  vm         <- getVarMap
+  domConstrs <- mapM genDomConstr' $ Map.assocs vm
   return $ foldr (@&&) (BoolConst True) domConstrs
   where
-    genDomConstr' ((Range l u), vars) = let col = list (Set.elems vars)
-                                            dom = (asExpr l, asExpr u)
-                                        in forall col (\v -> v @: dom)
+    genDomConstr' ((Range l u), vars) = do
+      col <- tlFDExprList (Set.elems vars)
+      let dom = (asExpr l, asExpr u)
+      return $ forall col (\v -> v @: dom)
 
 external_d_C_solveFD :: OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
                    -> OP_List (OP_List C_Int)
-external_d_C_solveFD opts cs _ _ = let (solver,strategy) = getOpts opts
-                                       solutions = runSolver solver strategy cs []
-                                   in toCurry solutions
+external_d_C_solveFD opts constr _ _
+  = let opts'         = getOpts $ fromCurry opts
+        (solutions,_) = runSolver opts' constr []
+    in toCurry solutions
 
 external_d_C_solveFDVars :: OP_List C_Option -> C_FDConstr -> OP_List C_FDExpr
                        -> Cover -> ConstStore -> OP_List (OP_List C_Int)
-external_d_C_solveFDVars opts cs lvars _ _
-  = let (solver,strategy) = getOpts opts
-        solutions = runSolver solver strategy cs (fromCurry lvars)
+external_d_C_solveFDVars opts constr lvars _ _
+  = let opts'         = getOpts $ fromCurry opts
+        (solutions,_) = runSolver opts' constr (fromCurry lvars)
     in toCurry solutions
 
+external_d_C_solveFDND' :: OP_List C_Option -> C_FDConstr -> C_FDExpr -> C_Int
+                        -> Cover -> ConstStore -> C_Int
+external_d_C_solveFDND' opts constr lvar (Choices_C_Int _ (FreeID _ s) _) cd cs
+  = let opts'             = getOpts $ fromCurry opts
+        (solutions,state) = runSolver opts' constr []
+        vars              = S.evalState getAllVars state
+        def               = (d_C_failed cd cs)
+        solutions'        = map (mkChoices s cd cs) $ transpose solutions
+        solMap            = Map.fromList $ zip vars solutions'
+    in Map.findWithDefault def lvar solMap
+
+
+-- Convert list of solutions for one FD variable into one non-deterministic
+-- solution
+mkChoices :: IDSupply -> Cover -> ConstStore -> [Int] -> C_Int
+mkChoices s cd cs [x]       = toCurry x
+mkChoices s cd cs [x,y]     = nd_OP_qmark (toCurry x) (toCurry y) s cd cs
+mkChoices s cd cs (x:y:xys) = let s0 = leftSupply s
+                                  s1 = rightSupply s
+                                  c1 = nd_OP_qmark (toCurry x) (toCurry y) s cd cs
+                                  c2 = mkChoices s0 cd cs xys
+                              in nd_OP_qmark c1 c2 s1 cd cs
+
 isSolver :: C_Option -> Bool
+#ifdef GECODE
 isSolver C_Overton       = True
 isSolver C_GecodeRuntime = True
 isSolver C_GecodeSearch  = True
 isSolver _               = False
-
--- only the first labeling and the first solving option are used
-getOpts :: OP_List C_Option -> (Maybe C_Option, Maybe C_Option)
-getOpts opts = let (solver, strategy) = partition isSolver $ fromCurry opts
-               in (listToMaybe solver, listToMaybe strategy)
-
-runSolver :: Maybe C_Option -> Maybe C_Option -> C_FDConstr -> [C_FDExpr]
-          -> [[Int]]
-#ifdef GECODE
-runSolver (Just C_GecodeRuntime) mstrat cs lvars = gecodeRuntime mstrat cs lvars
-runSolver (Just C_GecodeSearch)  _      cs lvars = gecodeSearch cs lvars
-runSolver _                      mstrat cs lvars = overton mstrat cs lvars
 #else
-runSolver _                      mstrat cs lvars = overton mstrat cs lvars
+isSolver _               = False
 #endif
 
-gecodeRuntime :: Maybe C_Option -> C_FDConstr -> [C_FDExpr] -> [[Int]]
-gecodeRuntime mstrat cs lvars
-  = let model = S.evalState (genMCPModel cs lvars) initState
-    in map (map fromInteger) $ snd $ MCP.solve dfs fs $
-         (model :: GecodeRuntimeTree) >>= labelWith mstrat
+isLabel :: C_Option -> Bool
+isLabel C_InOrder   = True
+isLabel C_FirstFail = True
+isLabel C_MiddleOut = True
+isLabel C_EndsOut   = True
+isLabel _           = False
 
-gecodeSearch :: C_FDConstr -> [C_FDExpr] -> [[Int]]
-gecodeSearch cs lvars
-  = let model = S.evalState (genMCPModel cs lvars) initState
-    in map (map fromInteger) $ snd $ MCP.solve dfs fs $
-        (model :: GecodeSearchTree) >>= (\x -> setSearchMinimize >> return x) >>= labelCol
+isSearch :: C_Option -> Bool
+isSearch C_DepthFirst   = True
+isSearch C_BreadthFirst = True
+isSearch _              = False
 
-overton :: Maybe C_Option -> C_FDConstr -> [C_FDExpr] -> [[Int]]
-overton mstrat cs lvars
-  = let model = S.evalState (genMCPModel cs lvars) initState
-    in snd $ MCP.solve dfs fs $ (model :: OvertonTree) >>= labelWith mstrat
+isTransformer :: C_Option -> Bool
+isTransformer C_FirstSolution = True
+isTransformer C_AllSolutions  = True
+isTransformer _               = False
+
+findWithDefault :: a -> (a -> Bool) -> [a] -> a
+findWithDefault def _ [] = def
+findWithDefault def p (x:xs) | p x       = x
+                             | otherwise = findWithDefault def p xs
+
+-- only the first given option of each kind is used
+getOpts :: [C_Option] -> (C_Option, C_Option, C_Option, C_Option)
+getOpts opts
+  = let solverOpt = findWithDefault C_Overton isSolver opts
+        labelOpt  = findWithDefault C_InOrder isLabel opts
+        searchOpt = findWithDefault C_DepthFirst isSearch opts
+        transOpt  = findWithDefault C_FirstSolution isTransformer opts
+    in (solverOpt, searchOpt, transOpt,labelOpt)
+
+-- Run a MCP solver with different search strategies and search transformers
+runSolver :: (C_Option, C_Option, C_Option, C_Option) -> C_FDConstr
+          -> [C_FDExpr] -> ([[Int]],TLState)
+runSolver (C_GecodeRuntime, C_DepthFirst, C_FirstSolution, labelOpt) constr labelVars
+  = S.runState (gecodeRuntime_DFS_FS constr labelVars labelOpt) initState
+runSolver (C_GecodeRuntime, C_DepthFirst, C_AllSolutions, labelOpt) constr labelVars
+  = S.runState (gecodeRuntime_DFS_AS constr labelVars labelOpt) initState
+runSolver (C_GecodeRuntime, C_BreadthFirst, C_FirstSolution, labelOpt) constr labelVars
+  = S.runState (gecodeRuntime_BFS_FS constr labelVars labelOpt) initState
+runSolver (C_GecodeRuntime, C_BreadthFirst, C_AllSolutions, labelOpt) constr labelVars
+  = S.runState (gecodeRuntime_BFS_AS constr labelVars labelOpt) initState
+
+runSolver (C_GecodeSearch, C_DepthFirst, C_FirstSolution, _) constr labelVars
+  = S.runState (gecodeSearch_DFS_FS constr labelVars) initState
+runSolver (C_GecodeSearch, C_DepthFirst, C_AllSolutions, _) constr labelVars
+  = S.runState (gecodeSearch_DFS_AS constr labelVars) initState
+runSolver (C_GecodeSearch, C_BreadthFirst, C_FirstSolution, _) constr labelVars
+  = S.runState (gecodeSearch_BFS_FS constr labelVars) initState
+runSolver (C_GecodeSearch, C_BreadthFirst, C_AllSolutions, _) constr labelVars
+  = S.runState (gecodeSearch_BFS_AS constr labelVars) initState
+
+runSolver (C_Overton, C_DepthFirst, C_FirstSolution, labelOpt) constr labelVars
+  = S.runState (overton_DFS_FS constr labelVars labelOpt) initState
+runSolver (C_Overton, C_DepthFirst, C_AllSolutions, labelOpt) constr labelVars
+  = S.runState (overton_DFS_AS constr labelVars labelOpt) initState
+runSolver (C_Overton, C_BreadthFirst, C_FirstSolution, labelOpt) constr labelVars
+  = S.runState (overton_BFS_FS constr labelVars labelOpt) initState
+runSolver (C_Overton, C_BreadthFirst, C_AllSolutions, labelOpt) constr labelVars
+  = S.runState (overton_BFS_AS constr labelVars labelOpt) initState
+
+-- MCP gecode runtime solver with various search strategies and search transformers
+gecodeRuntime_DFS_FS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+gecodeRuntime_DFS_FS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve dfs fs $
+        (model :: GecodeRuntimeTree) >>= labelWith labelOpt
+  return $ map (map fromInteger) values
+
+gecodeRuntime_DFS_AS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+gecodeRuntime_DFS_AS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve dfs it $
+        (model :: GecodeRuntimeTree) >>= labelWith labelOpt
+  return $ map (map fromInteger) values
+
+gecodeRuntime_BFS_FS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+gecodeRuntime_BFS_FS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve bfs fs $
+        (model :: GecodeRuntimeTree) >>= labelWith labelOpt
+  return $ map (map fromInteger) values
+
+gecodeRuntime_BFS_AS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+gecodeRuntime_BFS_AS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve bfs it $
+        (model :: GecodeRuntimeTree) >>= labelWith labelOpt
+  return $ map (map fromInteger) values
+
+-- MCP gecode search solver with various search strategies and search transformers
+gecodeSearch_DFS_FS :: C_FDConstr -> [C_FDExpr] -> TLM [[Int]]
+gecodeSearch_DFS_FS constr labelVars = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve dfs fs $ (model :: GecodeSearchTree)
+        >>= (\x -> setSearchMinimize >> return x) >>= labelCol
+  return $ map (map fromInteger) values
+
+gecodeSearch_DFS_AS :: C_FDConstr -> [C_FDExpr] -> TLM [[Int]]
+gecodeSearch_DFS_AS constr labelVars = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve dfs it $ (model :: GecodeSearchTree)
+        >>= (\x -> setSearchMinimize >> return x) >>= labelCol
+  return $ map (map fromInteger) values
+
+gecodeSearch_BFS_FS :: C_FDConstr -> [C_FDExpr] -> TLM [[Int]]
+gecodeSearch_BFS_FS constr labelVars = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve bfs fs $ (model :: GecodeSearchTree)
+        >>= (\x -> setSearchMinimize >> return x) >>= labelCol
+  return $ map (map fromInteger) values
+
+gecodeSearch_BFS_AS :: C_FDConstr -> [C_FDExpr] -> TLM [[Int]]
+gecodeSearch_BFS_AS constr labelVars = do
+  model <- genMCPModel constr labelVars
+  let values = snd $ MCP.solve bfs it $ (model :: GecodeSearchTree)
+        >>= (\x -> setSearchMinimize >> return x) >>= labelCol
+  return $ map (map fromInteger) values
+
+-- MCP overton solver with various search strategies and search transformers
+overton_DFS_FS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+overton_DFS_FS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  return $ snd $ MCP.solve dfs fs $
+    (model :: OvertonTree) >>= labelWith labelOpt
+
+overton_DFS_AS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+overton_DFS_AS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  return $ snd $ MCP.solve dfs it $
+    (model :: OvertonTree) >>= labelWith labelOpt
+
+overton_BFS_FS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+overton_BFS_FS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  return $ snd $ MCP.solve bfs fs $
+    (model :: OvertonTree) >>= labelWith labelOpt
+
+overton_BFS_AS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]
+overton_BFS_AS constr labelVars labelOpt = do
+  model <- genMCPModel constr labelVars
+  return $ snd $ MCP.solve bfs it $
+    (model :: OvertonTree) >>= labelWith labelOpt
 
 -- Label MCP collection with given strategy
 labelWith :: (FDSolver s, MonadTree m, TreeSolver m ~ FDInstance s,
-              EnumTerm s (FDIntTerm s)) => Maybe C_Option -> ModelCol
+              EnumTerm s (FDIntTerm s)) => C_Option -> ModelCol
                                         -> m [TermBaseType s (FDIntTerm s)]
-labelWith mstrat (ColList l) = label $ do
+labelWith labelOpt (ColList l) = label $ do
   return $ do
-    labelling (maybe inOrder getStrat mstrat) l
+    labelling (getLabelFunc labelOpt) l
     assignments l
-  where getStrat C_FirstFail = firstFail
-        getStrat C_MiddleOut = middleOut
-        getStrat C_EndsOut   = endsOut
+  where getLabelFunc C_InOrder   = inOrder
+        getLabelFunc C_FirstFail = firstFail
+        getLabelFunc C_MiddleOut = middleOut
+        getLabelFunc C_EndsOut   = endsOut

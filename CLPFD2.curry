@@ -4,7 +4,7 @@ module CLPFD2
   , (=#), (/=#), (<#), (<=#), (>#), (>=#), (/\)
   , (!#)
   , loopall
-  , solveFD, solveFDVars
+  , solveFD, solveFDVars, solveFDND
   , Option (..)
   ) where
 
@@ -118,11 +118,28 @@ solveFD external
 solveFDVars :: [Option] -> FDConstr -> [FDExpr] -> [[Int]]
 solveFDVars external
 
--- labeling and solving options
--- if no option is given, the Overton solver with in order labeling is used
-data Option = Overton
-            | GecodeRuntime
-            | GecodeSearch
-            | FirstFail
-            | MiddleOut
-            | EndsOut
+solveFDND :: [Option] -> FDConstr -> (FDExpr -> Int)
+solveFDND opts constr v = solveFDND' opts constr v unknown
+
+solveFDND' :: [Option] -> FDConstr -> FDExpr -> Int -> Int
+solveFDND' external
+
+-- labeling and solving options:
+-- if no option is given, the Overton solver with in order labeling,
+-- depth-first search and first solution search transformer is used
+data Option
+  -- FD solver back ends
+  = Overton
+  | GecodeRuntime
+  | GecodeSearch
+  -- Labeling strategies
+  | InOrder
+  | FirstFail
+  | MiddleOut
+  | EndsOut
+  -- search strategies
+  | DepthFirst
+  | BreadthFirst
+  -- search transformers
+  | FirstSolution
+  | AllSolutions
