@@ -22,7 +22,7 @@ import Control.CP.FD.Solvers (dfs, bfs, pfs, it, fs)
 import Control.CP.Queue
 import Control.CP.SearchTree (Tree, MonadTree(..))
 import Data.Expr.Data (BoolExpr (BoolConst), ColExpr (ColList))
-import Data.Expr.Sugar ((!), (@=), (@/=), (@<), (@<=), (@+), (@-), (@*), (@&&), (@:), xsum, allDiff, list, forall, loopall, ToBoolExpr(..), size)
+import Data.Expr.Sugar ((!), (@=), (@/=), (@<), (@<=), (@+), (@-), (@*), (@/), (@%), (@&&), (@||), (@:), inv, xsum, channel, allDiff, sorted, list, forall, loopall, ToBoolExpr(..))
 
 #ifdef GECODE
 import Control.CP.FD.GecodeExample (setSearchMinimize)
@@ -31,13 +31,15 @@ import Control.CP.FD.Gecode.Runtime (RuntimeGecodeSolver)
 import Control.CP.FD.Gecode.RuntimeSearch (SearchGecodeSolver)
 #endif
 
+
+import Debug.Trace as DT
 -- -----------------------------------------------------------------------------
 -- Representation of FD expressions
 -- -----------------------------------------------------------------------------
 
 type FDIdent = Integer
 
-data ArithOp = Plus | Minus | Mult
+data ArithOp = Plus | Minus | Mult | Div | Mod
   deriving (Eq, Ord)
 
 data C_FDExpr = FDVal Int
@@ -46,7 +48,9 @@ data C_FDExpr = FDVal Int
               | ExprHole Int
               | FDAt [C_FDExpr] C_FDExpr
               | FDArith ArithOp C_FDExpr C_FDExpr
+              | FDAbs C_FDExpr
               | FDSum [C_FDExpr]
+              | FDChannel C_FDConstr
               | Choice_C_FDExpr Cover ID C_FDExpr C_FDExpr
               | Choices_C_FDExpr Cover ID [C_FDExpr]
               | Fail_C_FDExpr Cover FailInfo
@@ -62,14 +66,20 @@ instance Show C_FDExpr where
   showsPrec _ (FDParam i) = showString $ 'p' : show i
   showsPrec _ (ExprHole i) = showString $ "par" ++ show i
   showsPrec d (FDAt c e) = showChar '(' . showListWith (showsPrec d) c
-                            . showChar '!' . showsPrec d e . showChar ')'
+    . showChar '!' . showsPrec d e . showChar ')'
   showsPrec d (FDArith op x y) = showChar '(' . showsPrec d x . showArithOP op
-                               . showsPrec d y . showChar ')'
+    . showsPrec d y . showChar ')'
     where showArithOP Plus  = showString " +# "
           showArithOP Minus = showString " -# "
           showArithOP Mult  = showString " *# "
+          showArithOP Div   = showString " /# "
+          showArithOP Mod   = showString " %# "
+  showsPrec d (FDAbs x) = showChar '(' . showString "abs " . showsPrec d x
+    . showChar ')'
   showsPrec d (FDSum xs) = showChar '(' . showString "sum "
-                         . showListWith (showsPrec d) xs . showChar ')'
+    . showListWith (showsPrec d) xs . showChar ')'
+  showsPrec d (FDChannel c) = showString "channel " . showChar '('
+    . showsPrec d c . showChar ')'
 
 instance Read C_FDExpr where
   readsPrec = internalError "read for FDExpr is undefined"
@@ -102,7 +112,9 @@ instance NormalForm C_FDExpr where
   ($!!) cont x@(ExprHole _) d cs = cont x d cs
   ($!!) cont x@(FDAt _ _) d cs = cont x d cs
   ($!!) cont x@(FDArith _ _ _) d cs = cont x d cs
+  ($!!) cont x@(FDAbs _) d cs = cont x d cs
   ($!!) cont x@(FDSum _) d cs = cont x d cs
+  ($!!) cont x@(FDChannel _) d cs = cont x d cs
   ($!!) cont (Choice_C_FDExpr cd i x y) d cs = nfChoice cont cd i x y cd cs
   ($!!) cont (Choices_C_FDExpr cd i xs) d cs = nfChoices cont cd i xs d cs
   ($!!) cont (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((cont $!! e) d) (addCs c cs))
@@ -113,7 +125,9 @@ instance NormalForm C_FDExpr where
   ($##) cont x@(ExprHole _) d cs = cont x d cs
   ($##) cont x@(FDAt _ _) d cs = cont x d cs
   ($##) cont x@(FDArith _ _ _) d cs = cont x d cs
+  ($##) cont x@(FDAbs _) d cs = cont x d cs
   ($##) cont x@(FDSum _) d cs = cont x d cs
+  ($##) cont x@(FDChannel _) d cs = cont x d cs
   ($##) cont (Choice_C_FDExpr cd i x y) d cs = gnfChoice cont cd i x y cd cs
   ($##) cont (Choices_C_FDExpr cd i xs) d cs = gnfChoices cont cd i xs d cs
   ($##) cont (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((cont $## e) d) (addCs c cs))
@@ -124,7 +138,9 @@ instance NormalForm C_FDExpr where
   showCons x@(ExprHole _) = "CLPFD2.ExprHole _"
   showCons x@(FDAt _ _) = "CLPFD2.FDAt _ _"
   showCons x@(FDArith _ _ _) = "CLPFD2.FDArith _ _ _"
+  showCons x@(FDAbs _) = "CLPFD2.FDAbs _ _ _"
   showCons x@(FDSum _) = "CLPFD2.FDSum _"
+  showCons x@(FDChannel _) = "CLPFD2.FDChannel _"
   showCons x = error ("CLPFD2.FDExpr.showCons: no constructor: " ++ (show x))
   searchNF _ cont x@(FDVal _) = cont x
   searchNF _ cont x@(FDVar _ _) = cont x
@@ -132,7 +148,9 @@ instance NormalForm C_FDExpr where
   searchNF _ cont x@(ExprHole _) = cont x
   searchNF _ cont x@(FDAt _ _) = cont x
   searchNF _ cont x@(FDArith _ _ _) = cont x
+  searchNF _ cont x@(FDAbs _) = cont x
   searchNF _ cont x@(FDSum _) = cont x
+  searchNF _ cont x@(FDChannel _) = cont x
   searchNF _ _ x = error ("CLPFD2.FDExpr.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_FDExpr where
@@ -151,16 +169,7 @@ instance Curry C_FDExpr where
   (=?=) y (Choices_C_FDExpr cd i xs) d cs = narrows cs cd i (\x -> ((y =?= x) d) cs) xs
   (=?=) y (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((y =?= e) d) (addCs c cs))
   (=?=) _ (Fail_C_FDExpr cd info) _ _ = failCons cd info
-  (=?=) (FDVal x) (FDVal y) _ _ = toCurry (x == y)
-  (=?=) (FDVar i _) (FDVar j _) _ _ = toCurry (i == j)
-  (=?=) (FDParam i) (FDParam j) _ _ = toCurry (i == j)
-  (=?=) (FDAt c1 e1) (FDAt c2 e2) d cs =
-    d_OP_amp_amp (foldr (\(x,y) z -> d_OP_amp_amp ((x =?= y) d cs) z d cs) C_True (zip c1 c2)) ((e1 =?= e2) d cs) d cs
-  (=?=) (FDArith op1 x1 y1) (FDArith op2 x2 y2) d cs =
-    d_OP_amp_amp (d_OP_amp_amp ((x1 =?= x2) d cs) ((y1 =?= y2) d cs) d cs) (toCurry (op1 == op2)) d cs
-  (=?=) (FDSum xs) (FDSum ys) d cs =
-    foldr (\(x,y) z -> d_OP_amp_amp ((x =?= y) d cs) z d cs) C_True (zip xs ys)
-  (=?=) _ _ _ _ = C_False
+  (=?=) x y                       _ _ = toCurry (x == y)
   (<?=) (Choice_C_FDExpr cd i x y) z d cs = narrow cd i (((x <?= z) d) cs) (((y <?= z) d) cs)
   (<?=) (Choices_C_FDExpr cd i xs) y d cs = narrows cs cd i (\x -> ((x <?= y) d) cs) xs
   (<?=) (Guard_C_FDExpr cd c e) y d cs = guardCons cd c (((e <?= y) d) (addCs c cs))
@@ -169,125 +178,7 @@ instance Curry C_FDExpr where
   (<?=) y (Choices_C_FDExpr cd i xs) d cs = narrows cs cd i (\x -> ((y <?= x) d) cs) xs
   (<?=) y (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((y <?= e) d) (addCs c cs))
   (<?=) _ (Fail_C_FDExpr cd info) _ _ = failCons cd info
-  (<?=) (FDVal x1) (FDVal y1) _ _ = toCurry (x1 <= y1)
-  (<?=) (FDVal _) (FDVar _ _) _ _ = C_True
-  (<?=) (FDVal _) (FDParam _) _ _ = C_True
-  (<?=) (FDVal _) (FDAt _ _) _ _ = C_True
-  (<?=) (FDVal _) (FDArith _ _ _) _ _ = C_True
-  (<?=) (FDVal _) (FDSum _) _ _ = C_True
-  (<?=) (FDVar x1 _) (FDVar y1 _) _ _ = toCurry (x1 <= y1)
-  (<?=) (FDVar _ _) (FDParam _) _ _ = C_True
-  (<?=) (FDVar _ _) (FDAt _ _) _ _ = C_True
-  (<?=) (FDVar _ _) (FDArith _ _ _) _ _ = C_True
-  (<?=) (FDVar _ _) (FDSum _) _ _ = C_True
-  (<?=) (FDParam x1) (FDParam y1) _ _ = toCurry (x1 <= y1)
-  (<?=) (FDParam _) (FDAt _ _) _ _ = C_True
-  (<?=) (FDParam _) (FDArith _ _ _) _ _ = C_True
-  (<?=) (FDParam _) (FDSum _) _ _ = C_True
-  (<?=) (FDAt c1 e1) (FDAt c2 e2) d cs =
-    d_OP_bar_bar (foldr (\(x,y) z -> d_OP_amp_amp ((x <?= y) d cs) z d cs) C_True (zip c1 c2)) ((e1 <?= e2) d cs) d cs
-  (<?=) (FDAt _ _) (FDArith _ _ _) _ _ = C_True
-  (<?=) (FDAt _ _) (FDSum _) _ _ = C_True
-  (<?=) (FDArith x1 x2 x3) (FDArith y1 y2 y3) d cs = d_OP_bar_bar (toCurry (x1 < y1)) (d_OP_amp_amp (toCurry (x1 == y1)) (d_OP_bar_bar (d_OP_lt x2 y2 d cs) (d_OP_amp_amp (((x2 =?= y2) d) cs) (((x3 <?= y3) d) cs) d cs) d cs) d cs) d cs
-  (<?=) (FDArith _ _ _) (FDSum _) _ _ = C_True
-  (<?=) (FDSum xs) (FDSum ys) d cs =
-    foldr (\(x,y) z -> d_OP_amp_amp ((x <?= y) d cs) z d cs) C_True (zip xs ys)
-  (<?=) _ _ d _ = C_False
-
-instance Eq C_FDExpr where
-  (FDVal x)                      == (FDVal y)                      = x == y
-  (FDVar i _)                    == (FDVar j _)                    = i == j
-  (FDParam i)                    == (FDParam j)                    = i == j
-  (ExprHole i)                   == (ExprHole j)                   = i == j
-  (FDAt c1 e1)                   == (FDAt c2 e2)                   = c1 == c2 && e1 == e2
-  (FDArith op1 x1 y1)            == (FDArith op2 x2 y2)            = op1 == op2 && x1 == x2 && y1 == y2
-  (FDSum xs)                     == (FDSum ys)                     = xs == ys
-  (Choice_C_FDExpr cd1 i1 x1 y1) == (Choice_C_FDExpr cd2 i2 x2 y2) = cd1 == cd2 && i1 == i2 && x1 == x2 && y1 == y2
-  (Choices_C_FDExpr cd1 i1 xs1)  == (Choices_C_FDExpr cd2 i2 xs2)  = cd1 == cd2 && i1 == i2 && xs1 == xs2
-  (Fail_C_FDExpr cd1 info1)      == (Fail_C_FDExpr cd2 info2)      = cd1 == cd2 && info1 == info2
-  (Guard_C_FDExpr cd1 cs1 x1)    == (Guard_C_FDExpr cd2 cs2 x2)    = cd1 == cd2 && cs1 == cs2 && x1 == x2
-  _                              == _                              = False
-
-instance Ord C_FDExpr where
-  compare (FDVal x)                      (FDVal y)                      = compare x y
-  compare (FDVal _)                      _                              = LT
-  compare (FDVar _ _)                    (FDVal _)                      = GT
-  compare (FDVar i _)                    (FDVar j _)                    = compare i j
-  compare (FDVar _ _)                    _                              = LT
-  compare (FDParam _)                    (FDVal _)                      = GT
-  compare (FDParam _)                    (FDVar _ _)                    = GT
-  compare (FDParam i)                    (FDParam j)                    = compare i j
-  compare (FDParam _)                    _                              = LT
-  compare (ExprHole _)                   (FDVal _)                      = GT
-  compare (ExprHole _)                   (FDVar _ _)                    = GT
-  compare (ExprHole _)                   (FDParam _)                    = GT
-  compare (ExprHole i)                   (ExprHole j)                   = compare i j
-  compare (ExprHole _)                   _                              = LT
-  compare (FDAt _ _)                     (FDVal _)                      = GT
-  compare (FDAt _ _)                     (FDVar _ _)                    = GT
-  compare (FDAt _ _)                     (FDParam _)                    = GT
-  compare (FDAt _ _)                     (ExprHole _)                   = GT
-  compare (FDAt c1 e1)                   (FDAt c2 e2)                   =
-    case compare c1 c2 of
-         LT -> LT
-         EQ -> compare e1 e2
-         GT -> GT
-  compare (FDAt _ _)                     _                              = LT
-  compare (FDArith _ _ _)                (FDVal _)                      = GT
-  compare (FDArith _ _ _)                (FDVar _ _)                    = GT
-  compare (FDArith _ _ _)                (FDParam _)                    = GT
-  compare (FDArith _ _ _)                (ExprHole _)                   = GT
-  compare (FDArith _ _ _)                (FDAt _ _)                     = GT
-  compare (FDArith op1 x1 y1)            (FDArith op2 x2 y2)            =
-    case compare op1 op2 of
-         LT -> LT
-         GT -> GT
-         EQ -> case compare x1 x2 of
-                    LT -> LT
-                    GT -> GT
-                    EQ -> compare y1 y2
-  compare (FDArith _ _ _)                _                              = LT
-  compare (FDSum xs)                     (FDSum ys)                     = compare xs ys
-  compare (FDSum _)                      (Choice_C_FDExpr _ _ _ _)      = LT
-  compare (FDSum _)                      (Choices_C_FDExpr _ _ _)       = LT
-  compare (FDSum _)                      (Fail_C_FDExpr _ _)            = LT
-  compare (FDSum _)                      (Guard_C_FDExpr _ _ _)         = LT
-  compare (FDSum _)                      _                              = GT
-  compare (Choice_C_FDExpr cd1 i1 x1 y1) (Choice_C_FDExpr cd2 i2 x2 y2) =
-    case compare cd1 cd2 of
-         LT -> LT
-         GT -> GT
-         EQ -> case compare (getKey i1) (getKey i2) of
-                    LT -> LT
-                    GT -> GT
-                    EQ -> case compare x1 x2 of
-                               LT -> LT
-                               GT -> GT
-                               EQ -> compare y1 y2
-  compare (Choice_C_FDExpr _ _ _ _)      (Choices_C_FDExpr _ _ _)       = LT
-  compare (Choice_C_FDExpr _ _ _ _)      (Fail_C_FDExpr _ _)            = LT
-  compare (Choice_C_FDExpr _ _ _ _)      (Guard_C_FDExpr _ _ _)         = LT
-  compare (Choice_C_FDExpr _ _ _ _)      _                              = GT
-  compare (Choices_C_FDExpr cd1 i1 xs1)  (Choices_C_FDExpr cd2 i2 xs2)  =
-    case compare cd1 cd2 of
-         LT -> LT
-         GT -> GT
-         EQ -> case compare (getKey i1) (getKey i2) of
-                    LT -> LT
-                    GT -> GT
-                    EQ -> compare xs1 xs2
-  compare (Choices_C_FDExpr _ _ _)       (Fail_C_FDExpr _ _)            = LT
-  compare (Choices_C_FDExpr _ _ _)       (Guard_C_FDExpr _ _ _)         = LT
-  compare (Choices_C_FDExpr _ _ _)       _                              = GT
-  compare (Fail_C_FDExpr cd1 _)          (Fail_C_FDExpr cd2 _)          = compare cd1 cd2
-  compare (Fail_C_FDExpr _ _)            (Guard_C_FDExpr _ _ _)         = LT
-  compare (Fail_C_FDExpr _ _)            _                              = GT
-  compare (Guard_C_FDExpr cd1 _ x1)      (Guard_C_FDExpr cd2 _ x2)      =
-    case compare cd1 cd2 of
-         LT -> LT
-         GT -> GT
-         EQ -> compare x1 x2
-  compare (Guard_C_FDExpr _ _ _)         _                              = GT
+  (<?=) x y                       _ _ = toCurry (x <= y)
 
 instance ConvertCurryHaskell C_FDExpr C_FDExpr where
   toCurry   = id
@@ -307,8 +198,12 @@ data RelOp = Equal | Diff | Less | LessEqual
 data C_FDConstr = FDConst Bool
                 | FDRel RelOp C_FDExpr C_FDExpr
                 | FDAllDifferent [C_FDExpr]
+                | FDSorted [C_FDExpr]
                 | FDLoopAll C_FDExpr C_FDExpr (C_FDExpr -> C_FDConstr)
+                | FDForAll [C_FDExpr] (C_FDExpr -> C_FDConstr)
                 | FDAnd C_FDConstr C_FDConstr
+                | FDOr C_FDConstr C_FDConstr
+                | FDNeg C_FDConstr
                 | Choice_C_FDConstr Cover ID C_FDConstr C_FDConstr
                 | Choices_C_FDConstr Cover ID [C_FDConstr]
                 | Fail_C_FDConstr Cover FailInfo
@@ -320,20 +215,27 @@ instance Show C_FDConstr where
   showsPrec d (Guard_C_FDConstr cd cs e) = showsGuard d cd cs e
   showsPrec _ (Fail_C_FDConstr _ _) = showChar '!'
   showsPrec _ (FDConst b) = shows b
-  showsPrec d (FDRel op x y) = showChar '(' . showsPrec d x . showRelOp op
-                             . showsPrec d y . showChar ')'
+  showsPrec d (FDRel op x y) = showsPrec d x . showRelOp op . showsPrec d y
     where showRelOp Equal     = showString " =# "
           showRelOp Diff      = showString " /=# "
           showRelOp Less      = showString " <# "
           showRelOp LessEqual = showString " <=# "
-  showsPrec d (FDAllDifferent xs) = showChar '(' . showString "allDifferent "
-                         . showListWith (showsPrec d) xs . showChar ')'
+  showsPrec d (FDAllDifferent xs) = showString "allDifferent "
+                         . showListWith (showsPrec d) xs
+  showsPrec d (FDSorted xs) = showString "sorted " . showListWith (showsPrec d) xs
   showsPrec d (FDLoopAll from to constr) = showString "loopall "
                          . showsPrec d from . showString " " . showsPrec d to
-                         . showString " $ \\par" . shows d . showString " -> "
-                         . showsPrec (d+1) (constr (ExprHole d))
-  showsPrec d (FDAnd c1 c2) =  showChar '(' . showsPrec d c1 . showString " /\\ "
+                         . showString " (\\par" . shows d . showString " -> "
+                         . showsPrec (d+1) (constr (ExprHole d)) . showChar ')'
+  showsPrec d (FDForAll xs constr) = showString "loopall "
+                         . showListWith (showsPrec d) xs
+                         . showString " (\\par" . shows d . showString " -> "
+                         . showsPrec (d+1) (constr (ExprHole d)) . showChar ')'
+  showsPrec d (FDAnd c1 c2) = showChar '(' . showsPrec d c1 . showString " /\\ "
                              . showsPrec d c2 . showChar ')'
+  showsPrec d (FDOr c1 c2) = showChar '(' . showsPrec d c1 . showString " \\/ "
+                             . showsPrec d c2 . showChar ')'
+  showsPrec d (FDNeg c) = showString "neg(" . showsPrec d c . showChar ')'
 
 instance Read C_FDConstr where
   readsPrec = internalError "read for FDConstr is undefined"
@@ -363,8 +265,12 @@ instance NormalForm C_FDConstr where
   ($!!) cont x@(FDConst _) d cs = cont x d cs
   ($!!) cont x@(FDRel _ _ _) d cs = cont x d cs
   ($!!) cont x@(FDAllDifferent _) d cs = cont x d cs
+  ($!!) cont x@(FDSorted _) d cs = cont x d cs
   ($!!) cont x@(FDLoopAll _ _ _) d cs = cont x d cs
+  ($!!) cont x@(FDForAll _ _) d cs = cont x d cs
   ($!!) cont x@(FDAnd _ _) d cs = cont x d cs
+  ($!!) cont x@(FDOr _ _) d cs = cont x d cs
+  ($!!) cont x@(FDNeg _) d cs = cont x d cs
   ($!!) cont (Choice_C_FDConstr cd i x y) d cs = nfChoice cont cd i x y cd cs
   ($!!) cont (Choices_C_FDConstr cd i xs) d cs = nfChoices cont cd i xs d cs
   ($!!) cont (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((cont $!! e) d) (addCs c cs))
@@ -372,8 +278,12 @@ instance NormalForm C_FDConstr where
   ($##) cont x@(FDConst _) d cs = cont x d cs
   ($##) cont x@(FDRel _ _ _) d cs = cont x d cs
   ($##) cont x@(FDAllDifferent _) d cs = cont x d cs
+  ($##) cont x@(FDSorted _) d cs = cont x d cs
   ($##) cont x@(FDLoopAll _ _ _) d cs = cont x d cs
+  ($##) cont x@(FDForAll _ _) d cs = cont x d cs
   ($##) cont x@(FDAnd _ _) d cs = cont x d cs
+  ($##) cont x@(FDOr _ _) d cs = cont x d cs
+  ($##) cont x@(FDNeg _) d cs = cont x d cs
   ($##) cont (Choice_C_FDConstr cd i x y) d cs = gnfChoice cont cd i x y cd cs
   ($##) cont (Choices_C_FDConstr cd i xs) d cs = gnfChoices cont cd i xs d cs
   ($##) cont (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((cont $## e) d) (addCs c cs))
@@ -381,14 +291,22 @@ instance NormalForm C_FDConstr where
   showCons x@(FDConst _) = "CLPFD2.FDConst _"
   showCons x@(FDRel _ _ _) = "CLPFD2.FDRel _ _ _"
   showCons x@(FDAllDifferent _) = "CLPFD2.FDAllDifferent _"
+  showCons x@(FDSorted _) = "CLPFD2.FDSorted _"
   showCons x@(FDLoopAll _ _ _) = "CLPFD2.FDLoopAll _ _ _"
+  showCons x@(FDForAll _ _) = "CLPFD2.FDForAll _ _"
   showCons x@(FDAnd _ _) = "CLPFD2.FDAnd _ _"
+  showCons x@(FDOr _ _) = "CLPFD2.FDOr _ _"
+  showCons x@(FDNeg _) = "CLPFD2.FDNeg _"
   showCons x = error ("CLPFD2.FDConstr.showCons: no constructor: " ++ (show x))
   searchNF _ cont x@(FDConst _) = cont x
   searchNF _ cont x@(FDRel _ _ _) = cont x
   searchNF _ cont x@(FDAllDifferent _) = cont x
+  searchNF _ cont x@(FDSorted _) = cont x
   searchNF _ cont x@(FDLoopAll _ _ _) = cont x
+  searchNF _ cont x@(FDForAll _ _) = cont x
   searchNF _ cont x@(FDAnd _ _) = cont x
+  searchNF _ cont x@(FDOr _ _) = cont x
+  searchNF _ cont x@(FDNeg _) = cont x
   searchNF _ _ x = error ("CLPFD2.FDConstr.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_FDConstr where
@@ -407,13 +325,7 @@ instance Curry C_FDConstr where
   (=?=) y (Choices_C_FDConstr cd i xs) d cs = narrows cs cd i (\x -> ((y =?= x) d) cs) xs
   (=?=) y (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((y =?= e) d) (addCs c cs))
   (=?=) _ (Fail_C_FDConstr cd info) _ _ = failCons cd info
-  (=?=) (FDConst b1) (FDConst b2) d cs = toCurry (b1 == b2)
-  (=?=) (FDRel op1 x1 y1) (FDRel op2 x2 y2) d cs =
-    d_OP_amp_amp (d_OP_amp_amp ((x1 =?= x2) d cs) ((y1 =?= y2) d cs) d cs) (toCurry (op1 == op2)) d cs
-  (=?=) (FDAllDifferent xs) (FDAllDifferent ys) d cs =
-    foldr (\(x,y) z -> d_OP_amp_amp ((x =?= y) d cs) z d cs) C_True (zip xs ys)
-  (=?=) (FDAnd c1 d1) (FDAnd c2 d2) d cs = d_OP_amp_amp ((c1 =?= c2) d cs) ((d1 =?= d2) d cs) d cs
-  (=?=) _ _ _ _ = C_False
+  (=?=) x y                         _ _ = toCurry (x == y)
   (<?=) (Choice_C_FDConstr cd i x y) z d cs = narrow cd i (((x <?= z) d) cs) (((y <?= z) d) cs)
   (<?=) (Choices_C_FDConstr cd i xs) y d cs = narrows cs cd i (\x -> ((x <?= y) d) cs) xs
   (<?=) (Guard_C_FDConstr cd c e) y d cs = guardCons cd c (((e <?= y) d) (addCs c cs))
@@ -422,18 +334,147 @@ instance Curry C_FDConstr where
   (<?=) y (Choices_C_FDConstr cd i xs) d cs = narrows cs cd i (\x -> ((y <?= x) d) cs) xs
   (<?=) y (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((y <?= e) d) (addCs c cs))
   (<?=) _ (Fail_C_FDConstr cd info) _ _ = failCons cd info
-  (<?=) (FDConst b1) (FDConst b2) _ _ = toCurry (b1 <= b2)
-  (<?=) (FDConst _) (FDRel _ _ _) _ _ = C_True
-  (<?=) (FDConst _) (FDAllDifferent _) _ _ = C_True
-  (<?=) (FDConst _) (FDAnd _ _) _ _ = C_True
-  (<?=) (FDRel x1 x2 x3) (FDRel y1 y2 y3) d cs = d_OP_bar_bar (toCurry (x1 < y1)) (d_OP_amp_amp (toCurry (x1 == y1)) (d_OP_bar_bar (d_OP_lt x2 y2 d cs) (d_OP_amp_amp (((x2 =?= y2) d) cs) (((x3 <?= y3) d) cs) d cs) d cs) d cs) d cs
-  (<?=) (FDRel _ _ _) (FDAllDifferent _) _ _ = C_True
-  (<?=) (FDRel _ _ _) (FDAnd _ _) _ _ = C_True
-  (<?=) (FDAllDifferent xs) (FDAllDifferent ys) d cs =
-    foldr (\(x,y) z -> d_OP_amp_amp ((x <?= y) d cs) z d cs) C_True (zip xs ys)
-  (<?=) (FDAllDifferent _) (FDAnd _ _) _ _ = C_True
-  (<?=) (FDAnd c1 d1) (FDAnd c2 d2) d cs = d_OP_bar_bar (d_OP_lt c1 c2 d cs) (d_OP_amp_amp ((c1 =?= c2) d cs) ((d1 <?= d2) d cs) d cs) d cs
-  (<?=) _ _ d _ = C_False
+  (<?=) x y                         _ _ = toCurry (x <= y)
+
+-- -----------------------------------------------------------------------------
+-- Eq and Ord instances
+-- -----------------------------------------------------------------------------
+
+instance Eq C_FDExpr where
+  (==) = equalExpr 0
+
+instance Eq C_FDConstr where
+  (==) = equalConstr 0
+
+instance Ord C_FDExpr where
+  compare = compareExpr 0
+
+instance Ord C_FDConstr where
+  compare = compareConstr 0
+
+equalExpr :: Int -> C_FDExpr -> C_FDExpr -> Bool
+equalExpr _ (FDVal x)                      (FDVal y)                      = x == y
+equalExpr _ (FDVar i _)                    (FDVar j _)                    = i == j
+equalExpr _ (FDParam i)                    (FDParam j)                    = i == j
+equalExpr _ (ExprHole i)                   (ExprHole j)                   = i == j
+equalExpr l (FDAt c1 e1)                   (FDAt c2 e2)                   = equalList l equalExpr c1 c2 && equalExpr l e1 e2
+equalExpr l (FDArith op1 x1 y1)            (FDArith op2 x2 y2)            = op1 == op2 && equalExpr l x1 x2 && equalExpr l y1 y2
+equalExpr l (FDAbs x1)                     (FDAbs x2)                     = equalExpr l x1 x2
+equalExpr l (FDSum xs1)                    (FDSum xs2)                    = equalList l equalExpr xs1 xs2
+equalExpr l (FDChannel c1)                 (FDChannel c2)                 = equalConstr l c1 c2
+equalExpr l (Choice_C_FDExpr cd1 i1 x1 y1) (Choice_C_FDExpr cd2 i2 x2 y2) = cd1 == cd2 && i1 == i2 && equalExpr l x1 x2 && equalExpr l y1 y2
+equalExpr l (Choices_C_FDExpr cd1 i1 xs1)  (Choices_C_FDExpr cd2 i2 xs2)  = cd1 == cd2 && i1 == i2 && equalList l equalExpr xs1 xs2
+equalExpr _ (Fail_C_FDExpr cd1 info1)      (Fail_C_FDExpr cd2 info2)      = cd1 == cd2 && info1 == info2
+equalExpr l (Guard_C_FDExpr cd1 cs1 x1)    (Guard_C_FDExpr cd2 cs2 x2)    = cd1 == cd2 && cs1 == cs2 && equalExpr l x1 x2
+equalExpr _ _                              _                              = False
+
+equalList :: Int -> (Int -> a -> a -> Bool) -> [a] -> [a] -> Bool
+equalList _ _  []     []     = True
+equalList l eq (x:xs) (y:ys) = eq l x y && equalList l eq xs ys
+
+equalConstr :: Int -> C_FDConstr -> C_FDConstr -> Bool
+equalConstr _ (FDConst b1)                     (FDConst b2)                     = b1 == b2
+equalConstr l (FDRel op1 x1 y1)                (FDRel op2 x2 y2)                = op1 == op2 && equalExpr l x1 x2 && equalExpr l y1 y2
+equalConstr l (FDAllDifferent xs1)             (FDAllDifferent xs2)             = equalList l equalExpr xs1 xs2
+equalConstr l (FDSorted xs1)                   (FDSorted xs2)                   = equalList l equalExpr xs1 xs2
+equalConstr l (FDLoopAll f1 t1 c1)             (FDLoopAll f2 t2 c2)             = equalExpr l f1 f2 && equalExpr l t1 t2 && equalConstr (l+1) (c1 (ExprHole l)) (c2 (ExprHole l))
+equalConstr l (FDForAll xs1 c1)                (FDForAll xs2 c2)                = equalList l equalExpr xs1 xs2 && equalConstr (l+1) (c1 (ExprHole l)) (c2 (ExprHole l))
+equalConstr l (FDAnd c1 d1)                    (FDAnd c2 d2)                    = equalConstr l c1 c2 && equalConstr l d1 d2
+equalConstr l (FDOr c1 d1)                     (FDOr c2 d2)                     = equalConstr l c1 c2 && equalConstr l d1 d2
+equalConstr l (FDNeg c1)                       (FDNeg c2)                       = equalConstr l c1 c2
+equalConstr l (Choice_C_FDConstr cd1 i1 x1 y1) (Choice_C_FDConstr cd2 i2 x2 y2) = cd1 == cd2 && i1 == i2 && equalConstr l x1 x2 && equalConstr l y1 y2
+equalConstr l (Choices_C_FDConstr cd1 i1 xs1)  (Choices_C_FDConstr cd2 i2 xs2)  = cd1 == cd2 && i1 == i2 && equalList l equalConstr xs1 xs2
+equalConstr _ (Fail_C_FDConstr cd1 info1)      (Fail_C_FDConstr cd2 info2)      = cd1 == cd2 && info1 == info2
+equalConstr l (Guard_C_FDConstr cd1 cs1 x1)    (Guard_C_FDConstr cd2 cs2 x2)    = cd1 == cd2 && cs1 == cs2 && equalConstr l x1 x2
+equalConstr _ _                                _                                = False
+
+infixr 4 <<>>
+(<<>>) :: Ordering -> Ordering -> Ordering
+a <<>> b = case a of
+  EQ -> b
+  _  -> a
+
+compareExpr :: Int -> C_FDExpr -> C_FDExpr -> Ordering
+compareExpr _ (FDVal x1)                     (FDVal x2)                     = compare x1 x2
+compareExpr _ (FDVal _)                      _                              = LT
+compareExpr _ _                              (FDVal _)                      = GT
+compareExpr _ (FDVar i1 _)                   (FDVar i2 _)                   = compare i1 i2
+compareExpr _ (FDVar _ _)                    _                              = LT
+compareExpr _ _                              (FDVar _ _)                    = GT
+compareExpr _ (FDParam i1)                   (FDParam i2)                   = compare i1 i2
+compareExpr _ (FDParam _)                    _                              = LT
+compareExpr _ _                              (FDParam _)                    = GT
+compareExpr _ (ExprHole i1)                  (ExprHole i2)                  = compare i1 i2
+compareExpr _ (ExprHole _)                   _                              = LT
+compareExpr _ _                              (ExprHole _)                   = GT
+compareExpr l (FDAt c1 e1)                   (FDAt c2 e2)                   = compareList l compareExpr c1 c2 <<>> compareExpr l e1 e2
+compareExpr _ (FDAt _ _)                     _                              = LT
+compareExpr _ _                              (FDAt _ _)                     = GT
+compareExpr l (FDArith op1 x1 y1)            (FDArith op2 x2 y2)            = compare op1 op2 <<>> compareExpr l x1 x2 <<>> compareExpr l y1 y2
+compareExpr _ (FDArith _ _ _)                _                              = LT
+compareExpr _ _                              (FDArith _ _ _)                = GT
+compareExpr l (FDAbs x1)                     (FDAbs x2)                     = compareExpr l x1 x2
+compareExpr _ (FDAbs _)                      _                              = LT
+compareExpr _ _                              (FDAbs _)                      = GT
+compareExpr l (FDSum xs1)                    (FDSum xs2)                    = compareList l compareExpr xs1 xs2
+compareExpr _ (FDSum _)                      _                              = LT
+compareExpr _ _                              (FDSum _)                      = GT
+compareExpr l (FDChannel b1)                 (FDChannel b2)                 = compareConstr l b1 b2
+compareExpr _ (FDChannel _)                  _                              = LT
+compareExpr _ _                              (FDChannel _)                  = GT
+compareExpr l (Choice_C_FDExpr cd1 i1 x1 y1) (Choice_C_FDExpr cd2 i2 x2 y2) = compare cd1 cd2 <<>> compare (getKey i1) (getKey i2) <<>> compareExpr l x1 x2 <<>> compareExpr l y1 y2
+compareExpr _ (Choice_C_FDExpr _ _ _ _)      _                              = LT
+compareExpr _ _                              (Choice_C_FDExpr _ _ _ _)      = GT
+compareExpr l (Choices_C_FDExpr cd1 i1 xs1)  (Choices_C_FDExpr cd2 i2 xs2)  = compare cd1 cd2 <<>> compare (getKey i1) (getKey i2) <<>> compareList l compareExpr xs1 xs2
+compareExpr _ (Choices_C_FDExpr _ _ _)       _                              = LT
+compareExpr _ _                              (Choices_C_FDExpr _ _ _)       = GT
+compareExpr _ (Fail_C_FDExpr cd1 _)          (Fail_C_FDExpr cd2 _)          = compare cd1 cd2
+compareExpr _ (Fail_C_FDExpr _ _)            _                              = LT
+compareExpr _ _                              (Fail_C_FDExpr _ _)            = GT
+compareExpr l (Guard_C_FDExpr cd1 _ x1)      (Guard_C_FDExpr cd2 _ x2)      = compare cd1 cd2 <<>> compareExpr l x1 x2
+
+compareList :: Int -> (Int -> a -> a -> Ordering) -> [a] -> [a] -> Ordering
+compareList _ _  []     []     = EQ
+compareList l cp (x:xs) (y:ys) = cp l x y <<>> compareList l cp xs ys
+
+compareConstr :: Int -> C_FDConstr -> C_FDConstr -> Ordering
+compareConstr _ (FDConst b1)                     (FDConst b2)                     = compare b1 b2
+compareConstr _ (FDConst _)                      _                                = LT
+compareConstr _ _                                (FDConst _)                      = GT
+compareConstr l (FDRel op1 x1 y1)                (FDRel op2 x2 y2)                = compare op1 op2 <<>> compareExpr l x1 x2 <<>> compareExpr l y1 y2
+compareConstr _ (FDRel _ _ _)                    _                                = LT
+compareConstr _ _                                (FDRel _ _ _)                    = GT
+compareConstr l (FDAllDifferent xs1)             (FDAllDifferent xs2)             = compareList l compareExpr xs1 xs2
+compareConstr _ (FDAllDifferent _)               _                                = LT
+compareConstr _ _                                (FDAllDifferent _)               = GT
+compareConstr l (FDSorted xs1)                   (FDSorted xs2)                   = compareList l compareExpr xs1 xs2
+compareConstr _ (FDSorted _)                     _                                = LT
+compareConstr _ _                                (FDSorted _)                     = GT
+compareConstr l (FDLoopAll f1 t1 c1)             (FDLoopAll f2 t2 c2)             = compareExpr l f1 f2 <<>> compareExpr l t1 t2 <<>> compareConstr (l+1) (c1 (ExprHole l)) (c2 (ExprHole l))
+compareConstr _ (FDLoopAll _ _ _)                _                                = LT
+compareConstr _ _                                (FDLoopAll _ _ _)                = GT
+compareConstr l (FDForAll xs1 c1)                (FDForAll xs2 c2)                = compareList l compareExpr xs1 xs2 <<>> compareConstr (l+1) (c1 (ExprHole l)) (c2 (ExprHole l))
+compareConstr _ (FDForAll _ _)                   _                                = LT
+compareConstr _ _                                (FDForAll _ _)                   = GT
+compareConstr l (FDAnd c1 d1)                    (FDAnd c2 d2)                    = compareConstr l c1 c2 <<>> compareConstr l d1 d2
+compareConstr _ (FDAnd _ _)                      _                                = LT
+compareConstr _ _                                (FDAnd _ _)                      = GT
+compareConstr l (FDOr c1 d1)                     (FDOr c2 d2)                     = compareConstr l c1 c2 <<>> compareConstr l d1 d2
+compareConstr _ (FDOr _ _)                       _                                = LT
+compareConstr _ _                                (FDOr _ _)                       = GT
+compareConstr l (FDNeg c1)                       (FDNeg c2)                       = compareConstr l c1 c2
+compareConstr _ (FDNeg _)                        _                                = LT
+compareConstr _ _                                (FDNeg _)                        = GT
+compareConstr l (Choice_C_FDConstr cd1 i1 x1 y1) (Choice_C_FDConstr cd2 i2 x2 y2) = compare cd1 cd2 <<>> compare (getKey i1) (getKey i2) <<>> compareConstr l x1 x2 <<>> compareConstr l y1 y2
+compareConstr _ (Choice_C_FDConstr _ _ _ _)      _                                = LT
+compareConstr _ _                                (Choice_C_FDConstr _ _ _ _)      = GT
+compareConstr l (Choices_C_FDConstr cd1 i1 xs1)  (Choices_C_FDConstr cd2 i2 xs2)  = compare cd1 cd2 <<>> compare (getKey i1) (getKey i2) <<>> compareList l compareConstr xs1 xs2
+compareConstr _ (Choices_C_FDConstr _ _ _)       _                                = LT
+compareConstr _ _                                (Choices_C_FDConstr _ _ _)       = GT
+compareConstr _ (Fail_C_FDConstr cd1 _)          (Fail_C_FDConstr cd2 _)          = compare cd1 cd2
+compareConstr _ (Fail_C_FDConstr _ _)            _                                = LT
+compareConstr _ _                                (Fail_C_FDConstr _ _)            = GT
+compareConstr l (Guard_C_FDConstr cd1 _ x1)      (Guard_C_FDConstr cd2 _ x2)      = compare cd1 cd2 <<>> compareConstr l x1 x2
 
 -- -----------------------------------------------------------------------------
 -- Representation of FD domains
@@ -445,8 +486,10 @@ data Domain = Range Int Int
 external_d_C_prim_FD_domain :: C_Int -> C_Int -> C_Int -> Cover
                          -> ConstStore -> OP_List C_FDExpr
 external_d_C_prim_FD_domain l u (Choices_C_Int _ (FreeID _ s) _) _ _ =
-  newFDVars s
-  where dom          = Range (fromCurry l) (fromCurry u)
+  if l' > u' then OP_List else newFDVars s
+  where l'           = fromCurry l
+        u'           = fromCurry u
+        dom          = Range l' u'
         newFDVars s' = let i   = getKey $ thisID $ leftSupply s'
                            s1 = rightSupply s'
                        in OP_Cons (FDVar i dom) (newFDVars s1)
@@ -475,6 +518,25 @@ external_d_C_prim_FD_mult :: C_FDExpr -> C_FDExpr -> Cover -> ConstStore
 external_d_C_prim_FD_mult (FDVal v1) (FDVal v2) _ _ = FDVal (v1 * v2)
 external_d_C_prim_FD_mult e1         e2         _ _ = FDArith Mult e1 e2
 
+external_d_C_prim_FD_div :: C_FDExpr -> C_FDExpr -> Cover -> ConstStore
+                         -> C_FDExpr
+external_d_C_prim_FD_div (FDVal v1) (FDVal v2) _ _ = FDVal (v1 `div` v2)
+external_d_C_prim_FD_div e1         e2         _ _ = FDArith Div e1 e2
+
+external_d_C_prim_FD_mod :: C_FDExpr -> C_FDExpr -> Cover -> ConstStore
+                         -> C_FDExpr
+external_d_C_prim_FD_mod (FDVal v1) (FDVal v2) _ _ = FDVal (v1 `mod` v2)
+external_d_C_prim_FD_mod e1         e2         _ _ = FDArith Mod e1 e2
+
+external_d_C_prim_FD_abs :: C_FDExpr -> Cover -> ConstStore -> C_FDExpr
+external_d_C_prim_FD_abs (FDVal v) _ _ = FDVal (abs v)
+external_d_C_prim_FD_abs e         _ _ = FDAbs e
+
+external_d_C_prim_FD_channel :: C_FDConstr -> Cover -> ConstStore -> C_FDExpr
+external_d_C_prim_FD_channel (FDConst False) _ _ = (FDVal 0)
+external_d_C_prim_FD_channel (FDConst True)  _ _ = (FDVal 1)
+external_d_C_prim_FD_channel c               _ _ = (FDChannel c)
+
 -- -----------------------------------------------------------------------------
 -- Relational FD constraints
 -- -----------------------------------------------------------------------------
@@ -501,11 +563,23 @@ external_d_C_prim_FD_lessEqual e1         e2         _ _ = FDRel LessEqual e1 e2
 
 external_d_C_prim_FD_and :: C_FDConstr -> C_FDConstr -> Cover -> ConstStore
                          -> C_FDConstr
-external_d_C_prim_FD_and (FDConst True)  c2              _ _ = c2
-external_d_C_prim_FD_and (FDConst False) _               _ _ = FDConst False
-external_d_C_prim_FD_and c1              (FDConst True)  _ _ = c1
-external_d_C_prim_FD_and c1              (FDConst False) _ _ = FDConst False
-external_d_C_prim_FD_and c1              c2              _ _ = FDAnd c1 c2
+external_d_C_prim_FD_and (FDConst True)     c2                 _ _ = c2
+external_d_C_prim_FD_and c1@(FDConst False) _                  _ _ = c1
+external_d_C_prim_FD_and c1                 (FDConst True)     _ _ = c1
+external_d_C_prim_FD_and c1                 c2@(FDConst False) _ _ = c2
+external_d_C_prim_FD_and c1                 c2                 _ _ = FDAnd c1 c2
+
+external_d_C_prim_FD_or :: C_FDConstr -> C_FDConstr -> Cover -> ConstStore
+                        -> C_FDConstr
+external_d_C_prim_FD_or c1@(FDConst True) _                 _ _ = c1
+external_d_C_prim_FD_or (FDConst False)   c2                _ _ = c2
+external_d_C_prim_FD_or _                 c2@(FDConst True) _ _ = c2
+external_d_C_prim_FD_or c1                (FDConst False)   _ _ = c1
+external_d_C_prim_FD_or c1                c2                _ _ = FDOr c1 c2
+
+external_d_C_prim_FD_neg :: C_FDConstr -> Cover -> ConstStore -> C_FDConstr
+external_d_C_prim_FD_neg (FDConst b) _ _ = FDConst (not b)
+external_d_C_prim_FD_neg c           _ _ = FDNeg c
 
 -- -----------------------------------------------------------------------------
 -- Global FD constraints
@@ -517,6 +591,10 @@ external_d_C_prim_FD_sum xs _ _ = FDSum (fromCurry xs)
 external_d_C_prim_FD_allDifferent :: OP_List C_FDExpr -> Cover -> ConstStore
                                   -> C_FDConstr
 external_d_C_prim_FD_allDifferent xs _ _ = FDAllDifferent (fromCurry xs)
+
+external_d_C_prim_FD_sorted :: OP_List C_FDExpr -> Cover -> ConstStore
+                            -> C_FDConstr
+external_d_C_prim_FD_sorted xs _ _ = FDSorted (fromCurry xs)
 
 -- -----------------------------------------------------------------------------
 -- Access FD expression list
@@ -541,6 +619,18 @@ external_nd_C_prim_FD_loopall :: C_FDExpr -> C_FDExpr
                               -> ConstStore -> C_FDConstr
 external_nd_C_prim_FD_loopall from to constr s cd cs
   = FDLoopAll from to (\e -> nd_apply constr e s cd cs)
+
+external_d_C_prim_FD_forall :: OP_List C_FDExpr
+                            -> (C_FDExpr -> Cover -> ConstStore -> C_FDConstr)
+                            -> Cover -> ConstStore -> C_FDConstr
+external_d_C_prim_FD_forall xs constr cd cs
+  = FDForAll (fromCurry xs) (\e -> constr e cd cs)
+
+external_nd_C_prim_FD_forall :: OP_List C_FDExpr
+                              -> (Func C_FDExpr C_FDConstr) -> IDSupply -> Cover
+                              -> ConstStore -> C_FDConstr
+external_nd_C_prim_FD_forall xs constr s cd cs
+  = FDForAll (fromCurry xs) (\e -> nd_apply constr e s cd cs)
 
 -- -----------------------------------------------------------------------------
 -- MCP solver translation
@@ -617,9 +707,18 @@ tlFDExpr (FDArith op e1 e2) = do
         tlArithOp Plus  = (@+)
         tlArithOp Minus = (@-)
         tlArithOp Mult  = (@*)
+        tlArithOp Div   = (@/)
+        tlArithOp Mod   = (@%)
+tlFDExpr (FDAbs e) = do
+  e' <- tlFDExpr e
+  return (abs e')
 tlFDExpr (FDSum xs) = do
   xs' <- tlFDExprList xs
   return (xsum xs')
+tlFDExpr (FDChannel c) = do
+  c' <- tlFDConstr c
+  return (channel c')
+tlFDExpr e = internalError $ "CLPFD2.tlFDExpr: Unknown FD expression: " ++ show e
 
 -- Translation of lists of FD expressions into MCP collections
 tlFDExprList :: [C_FDExpr] -> TLM ModelCol
@@ -642,6 +741,9 @@ tlFDConstr (FDRel op e1 e2) = do
 tlFDConstr (FDAllDifferent xs) = do
   xs' <- tlFDExprList xs
   return (allDiff xs')
+tlFDConstr (FDSorted xs) = do
+  xs' <- tlFDExprList xs
+  return (sorted xs')
 tlFDConstr (FDLoopAll from to constr) = do
   from'   <- tlFDExpr from
   to'     <- tlFDExpr to
@@ -649,11 +751,24 @@ tlFDConstr (FDLoopAll from to constr) = do
   param'  <- tlFDExpr param
   constr' <- tlFDConstr (constr param)
   return (loopall (from', to') (\x -> ((x @= param') :: Model) @&& constr'))
+tlFDConstr (FDForAll xs constr) = do
+  xs'     <- tlFDExprList xs
+  param   <- newParam
+  param'  <- tlFDExpr param
+  constr' <- tlFDConstr (constr param)
+  return (forall xs' (\x -> ((x @= param') :: Model) @&& constr'))
 tlFDConstr (FDAnd c1 c2) = do
   c1' <- tlFDConstr c1
   c2' <- tlFDConstr c2
   return (c1' @&& c2')
-tlFDConstr c = error $ "unknown constraint: " ++ show c
+tlFDConstr (FDOr c1 c2) = do
+  c1' <- tlFDConstr c1
+  c2' <- tlFDConstr c2
+  return (c1' @|| c2')
+tlFDConstr (FDNeg c) = do
+  c' <- tlFDConstr c
+  return (inv c')
+tlFDConstr c = internalError $ "CLPFD2.tlFDConstr: Unknown constraint: " ++ show c
 
 -- -----------------------------------------------------------------------------
 -- MCP solver solving

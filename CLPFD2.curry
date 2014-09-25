@@ -1,9 +1,9 @@
 module CLPFD2
-  ( domain, fdc, allDifferent, sum
-  , (+#), (-#), (*#)
-  , (=#), (/=#), (<#), (<=#), (>#), (>=#), (/\)
+  ( allDifferent, channel, domain, fdc, sorted, sum
+  , (+#), (-#), (*#), (/#), (%#), abs
+  , (=#), (/=#), (<#), (<=#), (>#), (>=#), (/\), (\/), neg
   , (!#)
-  , loopall
+  , loopall, forall
   , solveFD, solveFDVars, solveFDND
   , Option (..)
   ) where
@@ -13,6 +13,7 @@ infixl 7 *#
 infixl 6 +#, -#
 infix  4 =#, /=#, <#, <=#, >#, >=#
 infixr 3 /\
+infixr 2 \/
 
 -- abstract type for FD expressions
 data FDExpr
@@ -39,6 +40,18 @@ sum vs = prim_FD_sum $!! (ensureSpine vs)
 prim_FD_sum :: [FDExpr] -> FDExpr
 prim_FD_sum external
 
+sorted :: [FDExpr] -> FDConstr
+sorted vs = prim_FD_sorted $!! (ensureSpine vs)
+
+prim_FD_sorted :: [FDExpr] -> FDConstr
+prim_FD_sorted external
+
+channel :: FDConstr -> FDExpr
+channel c = prim_FD_channel $!! c
+
+prim_FD_channel :: FDConstr -> FDExpr
+prim_FD_channel external
+
 -- generates a FD expression for the given integer value
 fdc :: Int -> FDExpr
 fdc v = prim_fdc $## v
@@ -60,6 +73,24 @@ prim_FD_minus external
 
 (*#) :: FDExpr -> FDExpr -> FDExpr
 x *# y = (prim_FD_mult $!! x) $!! y
+
+(/#) :: FDExpr -> FDExpr -> FDExpr
+x /# y = (prim_FD_div $!! x) $!! y
+
+prim_FD_div :: FDExpr -> FDExpr -> FDExpr
+prim_FD_div external
+
+(%#) :: FDExpr -> FDExpr -> FDExpr
+x %# y = (prim_FD_mod $!! x) $!! y
+
+prim_FD_mod :: FDExpr -> FDExpr -> FDExpr
+prim_FD_mod external
+
+abs :: FDExpr -> FDExpr
+abs x = prim_FD_abs $!! x
+
+prim_FD_abs :: FDExpr -> FDExpr
+prim_FD_abs external
 
 prim_FD_mult :: FDExpr -> FDExpr -> FDExpr
 prim_FD_mult external
@@ -106,11 +137,29 @@ loopall from to constr = ((prim_FD_loopall $!! from) $!! to) $!! constr
 prim_FD_loopall :: FDExpr -> FDExpr -> (FDExpr -> FDConstr) -> FDConstr
 prim_FD_loopall external
 
+forall :: [FDExpr] -> (FDExpr -> FDConstr) -> FDConstr
+forall vs constr = (prim_FD_forall $!! vs) $!! constr
+
+prim_FD_forall :: [FDExpr] -> (FDExpr -> FDConstr) -> FDConstr
+prim_FD_forall external
+
 (/\) :: FDConstr -> FDConstr -> FDConstr
 c1 /\ c2 = (prim_FD_and $!! c1) $!! c2
 
 prim_FD_and :: FDConstr -> FDConstr -> FDConstr
 prim_FD_and external
+
+(\/) :: FDConstr -> FDConstr -> FDConstr
+c1 \/ c2 = (prim_FD_or $!! c1) $!! c2
+
+prim_FD_or :: FDConstr -> FDConstr -> FDConstr
+prim_FD_or external
+
+neg :: FDConstr -> FDConstr
+neg c = prim_FD_neg $!! c
+
+prim_FD_neg :: FDConstr -> FDConstr
+prim_FD_neg external
 
 solveFD :: [Option] -> FDConstr -> [[Int]]
 solveFD external
