@@ -2,10 +2,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
 
-import qualified Control.Monad.State as S (State, gets, modify, runState, evalState)
-import Data.List (partition, transpose)
+import qualified Control.Monad.State as S (State, gets, modify, evalState)
 import qualified Data.Map as Map
-import Data.Maybe (listToMaybe)
 import qualified Data.Set as Set
 import Text.Show (showListWith)
 
@@ -18,8 +16,7 @@ import Control.CP.FD.FD (FDInstance, FDSolver(..))
 import Control.CP.FD.Interface (labelCol)
 import Control.CP.FD.Model (Model, ModelInt, ModelCol, ModelIntTerm(..), ModelFunctions, asExpr)
 import Control.CP.FD.OvertonFD.OvertonFD (OvertonFD)
-import Control.CP.FD.Solvers (dfs, bfs, pfs, it, fs)
-import Control.CP.Queue
+import Control.CP.FD.Solvers (dfs, bfs, it, fs)
 import Control.CP.SearchTree (Tree, MonadTree(..))
 import Data.Expr.Data (BoolExpr (BoolConst), ColExpr (ColList))
 import Data.Expr.Sugar ((!), (@=), (@/=), (@<), (@<=), (@+), (@-), (@*), (@/), (@%), (@&&), (@||), (@:), inv, xsum, channel, allDiff, sorted, list, forall, loopall, ToBoolExpr(..))
@@ -31,8 +28,6 @@ import Control.CP.FD.Gecode.Runtime (RuntimeGecodeSolver)
 import Control.CP.FD.Gecode.RuntimeSearch (SearchGecodeSolver)
 #endif
 
-
-import Debug.Trace as DT
 -- -----------------------------------------------------------------------------
 -- Representation of FD expressions
 -- -----------------------------------------------------------------------------
@@ -789,7 +784,9 @@ genMCPModel cs lvars = do
   domConstr <- genDomConstr
   mcpLVars  <- getLabelVars lvars
   let model = domConstr @&& mcpConstr
-  return $ genModelTree model mcpLVars
+  case mcpLVars of
+    ColList [] -> return false
+    _          -> return $ genModelTree model mcpLVars
   where
     getLabelVars :: [C_FDExpr] -> TLM ModelCol
     getLabelVars []   = getAllVars >>= tlFDExprList
@@ -812,42 +809,20 @@ genDomConstr = do
       let dom = (asExpr l, asExpr u)
       return $ forall col (\v -> v @: dom)
 
-external_d_C_solveFD :: OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
-                   -> OP_List (OP_List C_Int)
-external_d_C_solveFD opts constr _ _
-  = let opts'         = getOpts $ fromCurry opts
-        (solutions,_) = runSolver opts' constr []
+external_d_C_prim_solveFD :: OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
+                          -> OP_List (OP_List C_Int)
+external_d_C_prim_solveFD opts constr _ _
+  = let opts'     = getOpts $ fromCurry opts
+        solutions = runSolver opts' constr []
     in toCurry solutions
 
-external_d_C_solveFDVars :: OP_List C_Option -> C_FDConstr -> OP_List C_FDExpr
-                       -> Cover -> ConstStore -> OP_List (OP_List C_Int)
-external_d_C_solveFDVars opts constr lvars _ _
-  = let opts'         = getOpts $ fromCurry opts
-        (solutions,_) = runSolver opts' constr (fromCurry lvars)
+external_d_C_prim_solveFDVars :: OP_List C_Option -> C_FDConstr
+                              -> OP_List C_FDExpr -> Cover -> ConstStore
+                              -> OP_List (OP_List C_Int)
+external_d_C_prim_solveFDVars opts constr lvars _ _
+  = let opts'     = getOpts $ fromCurry opts
+        solutions = runSolver opts' constr (fromCurry lvars)
     in toCurry solutions
-
-external_d_C_solveFDND' :: OP_List C_Option -> C_FDConstr -> C_FDExpr -> C_Int
-                        -> Cover -> ConstStore -> C_Int
-external_d_C_solveFDND' opts constr lvar (Choices_C_Int _ (FreeID _ s) _) cd cs
-  = let opts'             = getOpts $ fromCurry opts
-        (solutions,state) = runSolver opts' constr []
-        vars              = S.evalState getAllVars state
-        def               = (d_C_failed cd cs)
-        solutions'        = map (mkChoices s cd cs) $ transpose solutions
-        solMap            = Map.fromList $ zip vars solutions'
-    in Map.findWithDefault def lvar solMap
-
-
--- Convert list of solutions for one FD variable into one non-deterministic
--- solution
-mkChoices :: IDSupply -> Cover -> ConstStore -> [Int] -> C_Int
-mkChoices s cd cs [x]       = toCurry x
-mkChoices s cd cs [x,y]     = nd_OP_qmark (toCurry x) (toCurry y) s cd cs
-mkChoices s cd cs (x:y:xys) = let s0 = leftSupply s
-                                  s1 = rightSupply s
-                                  c1 = nd_OP_qmark (toCurry x) (toCurry y) s cd cs
-                                  c2 = mkChoices s0 cd cs xys
-                              in nd_OP_qmark c1 c2 s1 cd cs
 
 isSolver :: C_Option -> Bool
 #ifdef GECODE
@@ -892,33 +867,33 @@ getOpts opts
 
 -- Run a MCP solver with different search strategies and search transformers
 runSolver :: (C_Option, C_Option, C_Option, C_Option) -> C_FDConstr
-          -> [C_FDExpr] -> ([[Int]],TLState)
+          -> [C_FDExpr] -> [[Int]]
 runSolver (C_GecodeRuntime, C_DepthFirst, C_FirstSolution, labelOpt) constr labelVars
-  = S.runState (gecodeRuntime_DFS_FS constr labelVars labelOpt) initState
+  = S.evalState (gecodeRuntime_DFS_FS constr labelVars labelOpt) initState
 runSolver (C_GecodeRuntime, C_DepthFirst, C_AllSolutions, labelOpt) constr labelVars
-  = S.runState (gecodeRuntime_DFS_AS constr labelVars labelOpt) initState
+  = S.evalState (gecodeRuntime_DFS_AS constr labelVars labelOpt) initState
 runSolver (C_GecodeRuntime, C_BreadthFirst, C_FirstSolution, labelOpt) constr labelVars
-  = S.runState (gecodeRuntime_BFS_FS constr labelVars labelOpt) initState
+  = S.evalState (gecodeRuntime_BFS_FS constr labelVars labelOpt) initState
 runSolver (C_GecodeRuntime, C_BreadthFirst, C_AllSolutions, labelOpt) constr labelVars
-  = S.runState (gecodeRuntime_BFS_AS constr labelVars labelOpt) initState
+  = S.evalState (gecodeRuntime_BFS_AS constr labelVars labelOpt) initState
 
 runSolver (C_GecodeSearch, C_DepthFirst, C_FirstSolution, _) constr labelVars
-  = S.runState (gecodeSearch_DFS_FS constr labelVars) initState
+  = S.evalState (gecodeSearch_DFS_FS constr labelVars) initState
 runSolver (C_GecodeSearch, C_DepthFirst, C_AllSolutions, _) constr labelVars
-  = S.runState (gecodeSearch_DFS_AS constr labelVars) initState
+  = S.evalState (gecodeSearch_DFS_AS constr labelVars) initState
 runSolver (C_GecodeSearch, C_BreadthFirst, C_FirstSolution, _) constr labelVars
-  = S.runState (gecodeSearch_BFS_FS constr labelVars) initState
+  = S.evalState (gecodeSearch_BFS_FS constr labelVars) initState
 runSolver (C_GecodeSearch, C_BreadthFirst, C_AllSolutions, _) constr labelVars
-  = S.runState (gecodeSearch_BFS_AS constr labelVars) initState
+  = S.evalState (gecodeSearch_BFS_AS constr labelVars) initState
 
 runSolver (C_Overton, C_DepthFirst, C_FirstSolution, labelOpt) constr labelVars
-  = S.runState (overton_DFS_FS constr labelVars labelOpt) initState
+  = S.evalState (overton_DFS_FS constr labelVars labelOpt) initState
 runSolver (C_Overton, C_DepthFirst, C_AllSolutions, labelOpt) constr labelVars
-  = S.runState (overton_DFS_AS constr labelVars labelOpt) initState
+  = S.evalState (overton_DFS_AS constr labelVars labelOpt) initState
 runSolver (C_Overton, C_BreadthFirst, C_FirstSolution, labelOpt) constr labelVars
-  = S.runState (overton_BFS_FS constr labelVars labelOpt) initState
+  = S.evalState (overton_BFS_FS constr labelVars labelOpt) initState
 runSolver (C_Overton, C_BreadthFirst, C_AllSolutions, labelOpt) constr labelVars
-  = S.runState (overton_BFS_AS constr labelVars labelOpt) initState
+  = S.evalState (overton_BFS_AS constr labelVars labelOpt) initState
 
 -- MCP gecode runtime solver with various search strategies and search transformers
 gecodeRuntime_DFS_FS :: C_FDConstr -> [C_FDExpr] -> C_Option -> TLM [[Int]]

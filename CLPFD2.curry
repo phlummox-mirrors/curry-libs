@@ -1,11 +1,12 @@
 module CLPFD2
-  ( allDifferent, channel, domain, fdc, sorted, sum
-  , (+#), (-#), (*#), (/#), (%#), abs
-  , (=#), (/=#), (<#), (<=#), (>#), (>=#), (/\), (\/), neg
+  ( FDConstr, FDExpr, Option (..)
+  , abs, allDifferent, channel, domain, fdc, neg, sorted, sum
+  , (+#), (-#), (*#), (/#), (%#)
+  , (=#), (/=#), (<#), (<=#), (>#), (>=#)
+  , (/\), (\/)
   , (!#)
   , loopall, forall
-  , solveFD, solveFDVars, solveFDND
-  , Option (..)
+  , solveFD, solveFDVars
   ) where
 
 infix  9 !#
@@ -162,16 +163,17 @@ prim_FD_neg :: FDConstr -> FDConstr
 prim_FD_neg external
 
 solveFD :: [Option] -> FDConstr -> [[Int]]
-solveFD external
+solveFD opts constr = (prim_solveFD $!! (ensureSpine opts)) $!! constr
+
+prim_solveFD :: [Option] -> FDConstr -> [[Int]]
+prim_solveFD external
 
 solveFDVars :: [Option] -> FDConstr -> [FDExpr] -> [[Int]]
-solveFDVars external
+solveFDVars opts constr lvars =
+  ((prim_solveFDVars $!! (ensureSpine opts)) $!! constr) $!! (ensureSpine lvars)
 
-solveFDND :: [Option] -> FDConstr -> (FDExpr -> Int)
-solveFDND opts constr v = solveFDND' opts constr v unknown
-
-solveFDND' :: [Option] -> FDConstr -> FDExpr -> Int -> Int
-solveFDND' external
+prim_solveFDVars :: [Option] -> FDConstr -> [FDExpr] -> [[Int]]
+prim_solveFDVars external
 
 -- labeling and solving options:
 -- if no option is given, the Overton solver with in order labeling,
