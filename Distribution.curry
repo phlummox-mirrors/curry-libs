@@ -8,6 +8,8 @@
 --- @version November 2014
 --------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module Distribution (
   curryCompiler,curryCompilerMajorVersion,curryCompilerMinorVersion,
   curryRuntime,curryRuntimeMajorVersion,curryRuntimeMinorVersion,

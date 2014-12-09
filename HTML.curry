@@ -19,6 +19,8 @@
 --- @version November 2014
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..),
             HtmlForm(..),FormParam(..),CookieParam(..),
             CgiRef,idOfCgiRef,CgiEnv,HtmlHandler,
@@ -77,6 +79,7 @@ defaultEncoding = "utf-8" --"iso-8859-1"
 --- The (abstract) data type for representing references to input elements
 --- in HTML forms.
 data CgiRef = CgiRef String
+  deriving Eq
 
 --- Internal identifier of a CgiRef (intended only for internal use in other
 --- libraries!).
@@ -196,6 +199,7 @@ data CookieParam = CookieExpire ClockTime
                  | CookieDomain String
                  | CookiePath   String
                  | CookieSecure
+  deriving Eq
 
 --- A basic HTML form for active web pages with the default encoding
 --- and a default background.
@@ -1083,6 +1087,7 @@ runFormServerWithKeyAndFormParams url cgikey formparams hformact = do
                                  hformact socket state
 
 -- The default timeout period for the cgi server in milliseconds:
+defaultCgiServerTimeout :: Int
 defaultCgiServerTimeout = 7200000 -- two hours
 
 
@@ -1481,7 +1486,7 @@ cenv2hidden env = concat (map pair2hidden env)
 -- association lists (list of tag/value pairs):
 
 -- change an associated value (or add association, if not there):
-changeAssoc :: [(tt,tv)] -> tt -> tv -> [(tt,tv)]
+changeAssoc ::  Eq tt => [(tt,tv)] -> tt -> tv -> [(tt,tv)]
 changeAssoc [] tag val = [(tag,val)]
 changeAssoc ((tag1,val1):tvs) tag val =
    if tag1 == tag then (tag,val) : tvs
@@ -1986,7 +1991,7 @@ cleanOldEventHandlers state@(stime,maxkey,cleandate,ehs@(_:_)) = do
    then return state
    else do
      let currentehs = filter (isNotExpired ctime) ehs
-         noehs = length ehs
+         noehs = length ehs :: Int
          nocurrentehs = length currentehs
      if nocurrentehs < noehs
       then do -- report cleanup numbers:

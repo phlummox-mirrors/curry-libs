@@ -12,6 +12,9 @@
 --- @author Jasper Sikorra - jsi@informatik.uni-kiel.de
 --- @version March 2014
 ------------------------------------------------------------------------------
+
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module Format(showChar,showInt,showFloat,showString) where
 
 import Char
@@ -342,6 +345,7 @@ convertPrecision = maybe 1 id
 
 --- FILLING A STRING WITH APPROPRIATE ALIGNMENT
 data Alignment = LeftAlign | RightAlign
+  deriving Eq
 
 fillWithCharsLeftAlign :: Int -> Char -> String -> String
 fillWithCharsLeftAlign  = fillWithChars LeftAlign

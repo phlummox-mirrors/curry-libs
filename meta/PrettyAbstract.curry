@@ -7,6 +7,9 @@
 --- @author Stefan Junge
 --- @version June 2011
 -------------------------------------------------------------------------------
+
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module PrettyAbstract (showCProg, printCProg, cprogDoc,
                        prettyCProg, cprogDocWithPrecedences,
                        printUCProg, preludePrecs, precs, prettyCTypeExpr,

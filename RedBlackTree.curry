@@ -10,6 +10,8 @@
 --- @version March 2005
 ----------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module RedBlackTree
   ( RedBlackTree, empty, isEmpty, lookup, update
   , tree2list, sort, newTreeLike, setInsertEquivalence, delete
@@ -83,19 +85,19 @@ updateTree eq lt e t = let (Tree _     e2 l r) = upd t
                         | otherwise = balanceR (Tree c e2 l (upd r))
 
 --- Deletes entry from red black tree.
-delete :: a -> RedBlackTree a -> RedBlackTree a
+delete :: Eq a => a -> RedBlackTree a -> RedBlackTree a
 delete e (RedBlackTree eqIns eqLk lt t) =
           RedBlackTree eqIns eqLk lt (blackenRoot (deleteTree eqLk lt e t))
   where
     blackenRoot Empty = Empty
     blackenRoot (Tree _ x l r) = Tree Black x l r
 
-deleteTree :: (a -> a -> Prelude.Bool)
+deleteTree :: Eq a => (a -> a -> Prelude.Bool)
            -> (a -> a -> Prelude.Bool) -> a -> Tree a -> Tree a
 deleteTree _ _ _ Empty = Empty  -- no error for non existence
 deleteTree eq lt e (Tree c e2 l r)
-      | eq e e2 = if l==Empty then addColor c r else
-                  if r==Empty then addColor c l
+      | eq e e2 = if isEmptyTree l then addColor c r else
+                  if isEmptyTree r then addColor c l
                                else let el = rightMost l
                                      in delBalanceL (Tree c el (deleteTree eq lt el l) r)
       | lt e e2 = delBalanceL (Tree c e2 (deleteTree eq lt e l) r)
@@ -109,7 +111,7 @@ deleteTree eq lt e (Tree c e2 l r)
     addColor Black (Tree DoublyBlack x lx rx) = Tree DoublyBlack x lx rx
 
     rightMost Empty           = error "RedBlackTree.rightMost"
-    rightMost (Tree _ x _ rx) = if rx == Empty then x else rightMost rx
+    rightMost (Tree _ x _ rx) = if isEmptyTree rx then x else rightMost rx
 
 
 --- Transforms a red-black tree into an ordered list of its elements.
@@ -125,7 +127,7 @@ tree2listTree tree = t2l tree []
 --- Generic sort based on insertion into red-black trees.
 --- The first argument is the order for the elements.
 
-sort  :: (a -> a -> Bool) -> [a] -> [a]
+sort  :: Eq a => (a->a->Bool) -> [a] -> [a]
 sort cmp xs = tree2list (foldr update (empty (\_ _->False) (==) cmp) xs)
 
 --- For compatibility with old version only
@@ -140,10 +142,16 @@ rbt (RedBlackTree _ _ _ t) = t
 
 --- The colors of a node in a red-black tree.
 data Color = Red | Black | DoublyBlack
+  deriving Eq
 
 --- The structure of red-black trees.
 data Tree a = Tree Color a (Tree a) (Tree a)
             | Empty
+  deriving Eq
+
+isEmptyTree :: Tree a -> Bool
+isEmptyTree Empty          = True
+isEmptyTree (Tree _ _ _ _) = False
 
 isBlack :: Tree _ -> Bool
 isBlack Empty = True
@@ -206,12 +214,12 @@ balanceR tree
 
 --- balancing after deletion
 
-delBalanceL :: Tree a  ->  Tree a
+delBalanceL :: Eq a => Tree a  ->  Tree a
 delBalanceL tree = if isDoublyBlack (left tree) then reviseLeft tree else tree
 
-reviseLeft :: Tree a -> Tree a
+reviseLeft ::Tree a -> Tree a
 reviseLeft tree
-  | r == Empty = tree
+  | isEmptyTree r = tree
   | blackr && isRed (left r)
   = let Tree col x a (Tree _ z (Tree _ y b c) d) = tree
      in Tree col y (Tree Black x (singleBlack a) b) (Tree Black z c d)
@@ -228,12 +236,12 @@ reviseLeft tree
     r = right tree
     blackr = isBlack r
 
-delBalanceR :: Tree a  ->  Tree a
+delBalanceR :: Eq a => Tree a  ->  Tree a
 delBalanceR tree = if isDoublyBlack (right tree) then reviseRight tree else tree
 
 reviseRight :: Tree a -> Tree a
 reviseRight tree
-  | l == Empty = tree
+  | isEmptyTree l = tree
   | blackl && isRed (left l)
   = let Tree col x (Tree _ y (Tree _ z d c) b) a = tree
      in Tree col y (Tree Black z d c) (Tree Black x b (singleBlack a))

@@ -5,6 +5,8 @@
 --- @version November 2014
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module ReadNumeric
   ( readInt, readNat, readHex, readOct
   ) where

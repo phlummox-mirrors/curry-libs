@@ -12,6 +12,8 @@
 --- @version December 2005
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module FlatCurryShow(showFlatProg,showFlatType,showFlatFunc,
                      showCurryType,showCurryExpr,showCurryId,showCurryVar)
    where

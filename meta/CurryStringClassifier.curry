@@ -24,6 +24,7 @@
 --- @version April 2005
 ----------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
 
 module CurryStringClassifier
          (Tokens,Token(..), scan, plainCode, unscan,

@@ -15,6 +15,8 @@
 --- @version November 2014
 -- ---------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module AbstractCurry where
 
 import Char         (isSpace)
@@ -37,6 +39,7 @@ import FilePath     ((<.>))
 ---       imports: list of modules names that are imported,
 ---       typedecls, opdecls, functions: see below
 data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
+  deriving Eq
 
 
 --- The data type for representing qualified names.
@@ -49,6 +52,7 @@ type QName = (String,String)
 --- Data type to specify the visibility of various entities.
 data CVisibility = Public    -- exported entity
                  | Private   -- private entity
+  deriving (Eq,Show)
 
 
 --- The data type for representing type variables.
@@ -79,11 +83,13 @@ type CTVarIName = (Int,String)
 data CTypeDecl
   = CType    QName CVisibility [CTVarIName] [CConsDecl]
   | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
+  deriving Eq
 
 
 --- A constructor declaration consists of the name and arity of the
 --- constructor and a list of the argument types of the constructor.
 data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
+  deriving Eq
 
 
 --- Data type for type expressions.
@@ -99,6 +105,7 @@ data CTypeExpr
   | CTCons QName [CTypeExpr]       -- type constructor application
                                    -- (CTCons (module,name) arguments)
   | CRecordType [CField CTypeExpr] (Maybe CTVarIName) -- Record type (extended Curry)
+  deriving (Eq,Show)
 
 --- Labeled record fields
 type CField a = (CLabel, a)
@@ -110,12 +117,14 @@ type CLabel = String
 --- An operator declaration "fix p n" in Curry corresponds to the
 --- AbstractCurry term (COp n fix p).
 data COpDecl = COp QName CFixity Int
+  deriving Eq
 
 --- Data type for operator associativity
 data CFixity
   = CInfixOp   -- non-associative infix operator
   | CInfixlOp  -- left-associative infix operator
   | CInfixrOp  -- right-associative infix operator
+  deriving (Eq, Show)
 
 
 --- Data types for representing object variables.
@@ -150,7 +159,7 @@ type CVarIName = (Int,String)
 data CFuncDecl
   = CFunc QName Int CVisibility CTypeExpr CRules
   | CmtFunc String QName Int CVisibility CTypeExpr CRules
-
+  deriving (Eq,Show)
 
 --- A rule is either a list of formal parameters together with an expression
 --- (i.e., a rule in flat form), a list of general program rules with
@@ -158,6 +167,7 @@ data CFuncDecl
 data CRules
   = CRules CEvalAnnot [CRule]
   | CExternal String
+  deriving (Eq,Show)
 
 --- Data type for classifying evaluation annotations for functions.
 --- They can be either flexible (default), rigid, or choice.
@@ -165,18 +175,21 @@ data CEvalAnnot
   = CFlex
   | CRigid
   | CChoice
+  deriving (Eq,Show)
 
 --- The most general form of a rule. It consists of a list of patterns
 --- (left-hand side), a list of guards ("success" if not present in the
 --- source text) with their corresponding right-hand sides, and
 --- a list of local declarations.
 data CRule = CRule [CPattern] [(CExpr,CExpr)] [CLocalDecl]
+  deriving (Eq,Show)
 
 --- Data type for representing local (let/where) declarations
 data CLocalDecl
   = CLocalFunc CFuncDecl                   -- local function declaration
   | CLocalPat  CPattern CExpr [CLocalDecl] -- local pattern declaration
   | CLocalVar  CVarIName                   -- local free variable declaration
+  deriving (Eq,Show)
 
 --- Data type for representing Curry expressions.
 data CExpr
@@ -192,6 +205,7 @@ data CExpr
  | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
  | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
  | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
+  deriving (Eq,Show)
 
 --- Data type for representing statements in do expressions and
 --- list comprehensions.
@@ -199,6 +213,7 @@ data CStatement
   = CSExpr CExpr         -- an expression (I/O action or boolean)
   | CSPat CPattern CExpr -- a pattern definition
   | CSLet [CLocalDecl]   -- a local let declaration
+  deriving (Eq,Show)
 
 --- Data type for representing pattern expressions.
 data CPattern
@@ -210,11 +225,13 @@ data CPattern
   | CPFuncComb QName [CPattern]   -- function pattern (extended Curry)
   | CPLazy CPattern               -- lazy pattern (extended Curry)
   | CPRecord [CField CPattern] (Maybe CPattern) -- record pattern (extended curry)
+  deriving (Eq,Show)
 
 --- Data type for representing branches in case expressions.
 data CBranchExpr
   = CBranch CPattern CExpr
   | CGuardedBranch CPattern [(CExpr, CExpr)]
+  deriving (Eq,Show)
 
 --- Data type for representing literals occurring in an expression.
 --- It is either an integer, a float, or a character constant.
@@ -222,6 +239,7 @@ data CLiteral
   = CIntc   Int
   | CFloatc Float
   | CCharc  Char
+  deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------------
 

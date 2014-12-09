@@ -7,6 +7,9 @@
 --- @author  Björn Peemöller
 --- @version August 2013
 --- --------------------------------------------------------------------------
+
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module FlatCurryPretty where
 
 import Pretty

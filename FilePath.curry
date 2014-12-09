@@ -30,6 +30,8 @@
 -- tests, and should give clear semantics for the functions.
 -----------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module FilePath
   (
   -- * Separator predicates

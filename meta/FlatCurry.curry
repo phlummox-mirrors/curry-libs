@@ -9,6 +9,8 @@
 --- @version November 2014
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module FlatCurry where
 
 import Directory    (doesFileExist)
@@ -37,6 +39,7 @@ import Distribution ( FrontendParams, FrontendTarget (..), defaultParams
 --- data type, function, and operator declarations
 --- contained in this module, respectively.
 data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
+  deriving (Eq,Show)
 
 --- The data type for representing qualified names.
 --- In FlatCurry all names are qualified to avoid name clashes.
@@ -47,6 +50,7 @@ type QName = (String,String)
 --- Data type to specify the visibility of various entities.
 data Visibility = Public    -- public (exported) entity
                 | Private   -- private entity
+  deriving (Eq,Show)
 
 --- The data type for representing type variables.
 --- They are represented by `(TVar i)` where `i` is a type variable index.
@@ -72,10 +76,12 @@ type TVarIndex = Int
 --- a list of type parameters and a list of constructor declarations.
 data TypeDecl = Type    QName Visibility [TVarIndex] [ConsDecl]
               | TypeSyn QName Visibility [TVarIndex] TypeExpr
+  deriving (Eq,Show)
 
 --- A constructor declaration consists of the name and arity of the
 --- constructor and a list of the argument types of the constructor.
 data ConsDecl = Cons QName Int Visibility [TypeExpr]
+  deriving (Eq,Show)
 
 --- Data type for type expressions.
 --- A type expression is either a type variable, a function type,
@@ -84,19 +90,23 @@ data ConsDecl = Cons QName Int Visibility [TypeExpr]
 --- Note: the names of the predefined type constructors are
 --- "Int", "Float", "Bool", "Char", "IO", "Success",
 --- "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
-data TypeExpr
-  = TVar TVarIndex                 -- type variable
-  | FuncType TypeExpr TypeExpr     -- function type t1->t2
-  | TCons QName [TypeExpr]         -- type constructor application
-                                  -- TCons module name typeargs
+
+data TypeExpr =
+     TVar TVarIndex                 -- type variable
+   | FuncType TypeExpr TypeExpr     -- function type t1->t2
+   | TCons QName [TypeExpr]         -- type constructor application
+                                    -- TCons module name typeargs
+  deriving (Eq,Ord,Show)
 
 --- Data type for operator declarations.
 --- An operator declaration `fix p n` in Curry corresponds to the
 --- FlatCurry term `(Op n fix p)`.
 data OpDecl = Op QName Fixity Int
+  deriving (Eq,Show)
 
 --- Data types for the different choices for the fixity of an operator.
 data Fixity = InfixOp | InfixlOp | InfixrOp
+  deriving (Eq,Show)
 
 --- Data type for representing object variables.
 --- Object variables occurring in expressions are represented by `(Var i)`
@@ -127,15 +137,18 @@ type VarIndex = Int
 ---
 --- Thus, a function declaration consists of the name, arity, type, and rule.
 data FuncDecl = Func QName Int Visibility TypeExpr Rule
+  deriving (Eq,Show)
 
 --- A rule is either a list of formal parameters together with an expression
 --- or an "External" tag.
 data Rule = Rule [VarIndex] Expr
           | External String
+  deriving (Eq,Show)
 
 --- Data type for classifying case expressions.
 --- Case expressions can be either flexible or rigid in Curry.
 data CaseType = Rigid | Flex       -- type of a case expression
+  deriving (Eq,Ord,Show)
 
 --- Data type for classifying combinations
 --- (i.e., a function/constructor applied to some arguments).
@@ -148,6 +161,7 @@ data CaseType = Rigid | Flex       -- type of a case expression
 ---                      are provided) where the parameter is the number of
 ---                      missing arguments
 data CombType = FuncCall | ConsCall | FuncPartCall Int | ConsPartCall Int
+  deriving (Eq,Ord,Show)
 
 --- Data type for representing expressions.
 ---
@@ -202,6 +216,8 @@ data Expr = Var VarIndex
           | Or Expr Expr
           | Case CaseType Expr [BranchExpr]
           | Typed Expr TypeExpr
+  deriving (Eq,Ord,Show)
+
 
 --- Data type for representing branches in a case expression.
 ---
@@ -216,16 +232,19 @@ data Expr = Var VarIndex
 --- for integers as branch patterns (similarly for other literals
 --- like float or character constants).
 data BranchExpr = Branch Pattern Expr
+  deriving (Eq,Ord,Show)
 
 --- Data type for representing patterns in case expressions.
 data Pattern = Pattern QName [VarIndex]
              | LPattern Literal
+  deriving (Eq,Ord,Show)
 
 --- Data type for representing literals occurring in an expression
 --- or case branch. It is either an integer, a float, or a character constant.
 data Literal = Intc   Int
              | Floatc Float
              | Charc  Char
+  deriving (Eq,Ord,Show)
 
 -- -----------------------------------------------------------------------------
 -- Reading and writing of files

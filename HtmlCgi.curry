@@ -10,6 +10,8 @@
 --- @version September 2012
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module HtmlCgi(CgiServerMsg(..),runCgiServerCmd,
                cgiServerRegistry,registerCgiServer,unregisterCgiServer,
                readCgiServerMsg,noHandlerPage,submitForm)
@@ -95,6 +97,7 @@ submitForm = do
 
 -- load balance types:
 data LoadBalance = NoBalance | Standard | Multiple
+  deriving Eq
 
 --- Executes a specific command for a cgi server.
 runCgiServerCmd :: String -> CgiServerMsg -> IO ()

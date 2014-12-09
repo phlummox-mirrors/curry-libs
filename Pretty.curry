@@ -10,6 +10,8 @@
 --- @version June 2011
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module Pretty (
 
   -- pretty printer and document type

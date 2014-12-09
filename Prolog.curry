@@ -8,6 +8,8 @@
 --- @version August 14, 2014
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module Prolog(PlClause(..), PlGoal(..), PlTerm(..), plList,
               showPlProg, showPlClause, showPlGoals, showPlGoal, showPlTerm)
   where

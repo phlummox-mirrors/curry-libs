@@ -7,6 +7,8 @@
 --- @version January 2012
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module CPNS(registerPort,getPortInfo,unregisterPort,
             cpnsStart,cpnsStop,cpnsShow,cpnsAlive,main) where
 
@@ -29,10 +31,12 @@ import Profile
 -- Distributed Curry! If this port is occupied by another process
 -- on a host, you cannot run Distributed Curry on it.)
 
+cpnsSocket :: Int
 cpnsSocket = 8767  -- standard port number of CPNS demon
 
 
 -- The time out before considering the server as unreachable:
+cpnsTimeOut :: Int
 cpnsTimeOut = 3000
 
 --- Type of messages to be processed by the Curry Port Name Server.

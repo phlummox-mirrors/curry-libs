@@ -8,6 +8,8 @@
 --- @version January 2011
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module XML(XmlExp(..),Encoding(..),XmlDocParams(..),
        tagOf,elemsOf,textOf,textOfXml,xtxt,xml,
        showXmlDoc,showXmlDocWithParams,
@@ -25,6 +27,7 @@ import List(intersperse)
 ---               of XML elements as contents
 data XmlExp = XText String                             -- text string (PCDATA)
             | XElem String [(String,String)] [XmlExp]  -- (tag attrs contents)
+  deriving Eq
 
 ------------------------------------------------------------------------------
 --- The data type for encodings used in the XML document.

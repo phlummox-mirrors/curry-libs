@@ -9,6 +9,8 @@
 --- @version June 2012
 ------------------------------------------------------------------------------
 
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 module AbstractCurryPrinter
   ( showProg, showTypeDecls, showTypeDecl, showTypeExpr
   , showFuncDecl, showExpr, showPattern
