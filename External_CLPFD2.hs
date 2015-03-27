@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
@@ -7,7 +8,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Text.Show (showListWith)
 
-import Curry_Prelude
 import Debug (internalError)
 
 import qualified Control.CP.ComposableTransformers as MCP (solve)
@@ -155,23 +155,23 @@ instance Unifiable C_FDExpr where
   lazyBind = internalError "lazyBind for FDExpr is undefined"
   fromDecision _ _ _ = error "fromDecision for FDExpr is undefined"
 
-instance Curry C_FDExpr where
-  (=?=) (Choice_C_FDExpr cd i x y) z d cs = narrow cd i (((x =?= z) d) cs) (((y =?= z) d) cs)
-  (=?=) (Choices_C_FDExpr cd i xs) y d cs = narrows cs cd i (\x -> ((x =?= y) d) cs) xs
-  (=?=) (Guard_C_FDExpr cd c e) y d cs = guardCons cd c (((e =?= y) d) (addCs c cs))
+instance Curry_Prelude.Curry C_FDExpr where
+  (=?=) (Choice_C_FDExpr cd i x y) z d cs = narrow cd i (((x Curry_Prelude.=?= z) d) cs) (((y Curry_Prelude.=?= z) d) cs)
+  (=?=) (Choices_C_FDExpr cd i xs) y d cs = narrows cs cd i (\x -> ((x Curry_Prelude.=?= y) d) cs) xs
+  (=?=) (Guard_C_FDExpr cd c e) y d cs = guardCons cd c (((e Curry_Prelude.=?= y) d) (addCs c cs))
   (=?=) (Fail_C_FDExpr cd info) _ _ _ = failCons cd info
-  (=?=) z (Choice_C_FDExpr cd i x y) d cs = narrow cd i (((z =?= x) d) cs) (((z =?= y) d) cs)
-  (=?=) y (Choices_C_FDExpr cd i xs) d cs = narrows cs cd i (\x -> ((y =?= x) d) cs) xs
-  (=?=) y (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((y =?= e) d) (addCs c cs))
+  (=?=) z (Choice_C_FDExpr cd i x y) d cs = narrow cd i (((z Curry_Prelude.=?= x) d) cs) (((z Curry_Prelude.=?= y) d) cs)
+  (=?=) y (Choices_C_FDExpr cd i xs) d cs = narrows cs cd i (\x -> ((y Curry_Prelude.=?= x) d) cs) xs
+  (=?=) y (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((y Curry_Prelude.=?= e) d) (addCs c cs))
   (=?=) _ (Fail_C_FDExpr cd info) _ _ = failCons cd info
   (=?=) x y                       _ _ = toCurry (x == y)
-  (<?=) (Choice_C_FDExpr cd i x y) z d cs = narrow cd i (((x <?= z) d) cs) (((y <?= z) d) cs)
-  (<?=) (Choices_C_FDExpr cd i xs) y d cs = narrows cs cd i (\x -> ((x <?= y) d) cs) xs
-  (<?=) (Guard_C_FDExpr cd c e) y d cs = guardCons cd c (((e <?= y) d) (addCs c cs))
+  (<?=) (Choice_C_FDExpr cd i x y) z d cs = narrow cd i (((x Curry_Prelude.<?= z) d) cs) (((y Curry_Prelude.<?= z) d) cs)
+  (<?=) (Choices_C_FDExpr cd i xs) y d cs = narrows cs cd i (\x -> ((x Curry_Prelude.<?= y) d) cs) xs
+  (<?=) (Guard_C_FDExpr cd c e) y d cs = guardCons cd c (((e Curry_Prelude.<?= y) d) (addCs c cs))
   (<?=) (Fail_C_FDExpr cd info) _ _ _ = failCons cd info
-  (<?=) z (Choice_C_FDExpr cd i x y) d cs = narrow cd i (((z <?= x) d) cs) (((z <?= y) d) cs)
-  (<?=) y (Choices_C_FDExpr cd i xs) d cs = narrows cs cd i (\x -> ((y <?= x) d) cs) xs
-  (<?=) y (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((y <?= e) d) (addCs c cs))
+  (<?=) z (Choice_C_FDExpr cd i x y) d cs = narrow cd i (((z Curry_Prelude.<?= x) d) cs) (((z Curry_Prelude.<?= y) d) cs)
+  (<?=) y (Choices_C_FDExpr cd i xs) d cs = narrows cs cd i (\x -> ((y Curry_Prelude.<?= x) d) cs) xs
+  (<?=) y (Guard_C_FDExpr cd c e) d cs = guardCons cd c (((y Curry_Prelude.<?= e) d) (addCs c cs))
   (<?=) _ (Fail_C_FDExpr cd info) _ _ = failCons cd info
   (<?=) x y                       _ _ = toCurry (x <= y)
 
@@ -311,23 +311,23 @@ instance Unifiable C_FDConstr where
   lazyBind = internalError "lazyBind for FDConstr is undefined"
   fromDecision _ _ _ = error "fromDecision for FDConstr is undefined"
 
-instance Curry C_FDConstr where
-  (=?=) (Choice_C_FDConstr cd i x y) z d cs = narrow cd i (((x =?= z) d) cs) (((y =?= z) d) cs)
-  (=?=) (Choices_C_FDConstr cd i xs) y d cs = narrows cs cd i (\x -> ((x =?= y) d) cs) xs
-  (=?=) (Guard_C_FDConstr cd c e) y d cs = guardCons cd c (((e =?= y) d) (addCs c cs))
+instance Curry_Prelude.Curry C_FDConstr where
+  (=?=) (Choice_C_FDConstr cd i x y) z d cs = narrow cd i (((x Curry_Prelude.=?= z) d) cs) (((y Curry_Prelude.=?= z) d) cs)
+  (=?=) (Choices_C_FDConstr cd i xs) y d cs = narrows cs cd i (\x -> ((x Curry_Prelude.=?= y) d) cs) xs
+  (=?=) (Guard_C_FDConstr cd c e) y d cs = guardCons cd c (((e Curry_Prelude.=?= y) d) (addCs c cs))
   (=?=) (Fail_C_FDConstr cd info) _ _ _ = failCons cd info
-  (=?=) z (Choice_C_FDConstr cd i x y) d cs = narrow cd i (((z =?= x) d) cs) (((z =?= y) d) cs)
-  (=?=) y (Choices_C_FDConstr cd i xs) d cs = narrows cs cd i (\x -> ((y =?= x) d) cs) xs
-  (=?=) y (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((y =?= e) d) (addCs c cs))
+  (=?=) z (Choice_C_FDConstr cd i x y) d cs = narrow cd i (((z Curry_Prelude.=?= x) d) cs) (((z Curry_Prelude.=?= y) d) cs)
+  (=?=) y (Choices_C_FDConstr cd i xs) d cs = narrows cs cd i (\x -> ((y Curry_Prelude.=?= x) d) cs) xs
+  (=?=) y (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((y Curry_Prelude.=?= e) d) (addCs c cs))
   (=?=) _ (Fail_C_FDConstr cd info) _ _ = failCons cd info
   (=?=) x y                         _ _ = toCurry (x == y)
-  (<?=) (Choice_C_FDConstr cd i x y) z d cs = narrow cd i (((x <?= z) d) cs) (((y <?= z) d) cs)
-  (<?=) (Choices_C_FDConstr cd i xs) y d cs = narrows cs cd i (\x -> ((x <?= y) d) cs) xs
-  (<?=) (Guard_C_FDConstr cd c e) y d cs = guardCons cd c (((e <?= y) d) (addCs c cs))
+  (<?=) (Choice_C_FDConstr cd i x y) z d cs = narrow cd i (((x Curry_Prelude.<?= z) d) cs) (((y Curry_Prelude.<?= z) d) cs)
+  (<?=) (Choices_C_FDConstr cd i xs) y d cs = narrows cs cd i (\x -> ((x Curry_Prelude.<?= y) d) cs) xs
+  (<?=) (Guard_C_FDConstr cd c e) y d cs = guardCons cd c (((e Curry_Prelude.<?= y) d) (addCs c cs))
   (<?=) (Fail_C_FDConstr cd info) _ _ _ = failCons cd info
-  (<?=) z (Choice_C_FDConstr cd i x y) d cs = narrow cd i (((z <?= x) d) cs) (((z <?= y) d) cs)
-  (<?=) y (Choices_C_FDConstr cd i xs) d cs = narrows cs cd i (\x -> ((y <?= x) d) cs) xs
-  (<?=) y (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((y <?= e) d) (addCs c cs))
+  (<?=) z (Choice_C_FDConstr cd i x y) d cs = narrow cd i (((z Curry_Prelude.<?= x) d) cs) (((z Curry_Prelude.<?= y) d) cs)
+  (<?=) y (Choices_C_FDConstr cd i xs) d cs = narrows cs cd i (\x -> ((y Curry_Prelude.<?= x) d) cs) xs
+  (<?=) y (Guard_C_FDConstr cd c e) d cs = guardCons cd c (((y Curry_Prelude.<?= e) d) (addCs c cs))
   (<?=) _ (Fail_C_FDConstr cd info) _ _ = failCons cd info
   (<?=) x y                         _ _ = toCurry (x <= y)
 
@@ -479,15 +479,15 @@ data Domain = Range Int Int
   deriving (Eq, Ord, Show)
 
 external_d_C_prim_FD_domain :: C_Int -> C_Int -> C_Int -> Cover
-                         -> ConstStore -> OP_List C_FDExpr
+                         -> ConstStore -> Curry_Prelude.OP_List C_FDExpr
 external_d_C_prim_FD_domain l u (Choices_C_Int _ (FreeID _ s) _) _ _ =
-  if l' > u' then OP_List else newFDVars s
+  if l' > u' then Curry_Prelude.OP_List else newFDVars s
   where l'           = fromCurry l
         u'           = fromCurry u
         dom          = Range l' u'
         newFDVars s' = let i   = getKey $ thisID $ leftSupply s'
                            s1 = rightSupply s'
-                       in OP_Cons (FDVar i dom) (newFDVars s1)
+                       in Curry_Prelude.OP_Cons (FDVar i dom) (newFDVars s1)
 
 -- -----------------------------------------------------------------------------
 -- Arithmetic FD constraints
@@ -580,14 +580,14 @@ external_d_C_prim_FD_neg c           _ _ = FDNeg c
 -- Global FD constraints
 -- -----------------------------------------------------------------------------
 
-external_d_C_prim_FD_sum :: OP_List C_FDExpr -> Cover -> ConstStore -> C_FDExpr
+external_d_C_prim_FD_sum :: Curry_Prelude.OP_List C_FDExpr -> Cover -> ConstStore -> C_FDExpr
 external_d_C_prim_FD_sum xs _ _ = FDSum (fromCurry xs)
 
-external_d_C_prim_FD_allDifferent :: OP_List C_FDExpr -> Cover -> ConstStore
+external_d_C_prim_FD_allDifferent :: Curry_Prelude.OP_List C_FDExpr -> Cover -> ConstStore
                                   -> C_FDConstr
 external_d_C_prim_FD_allDifferent xs _ _ = FDAllDifferent (fromCurry xs)
 
-external_d_C_prim_FD_sorted :: OP_List C_FDExpr -> Cover -> ConstStore
+external_d_C_prim_FD_sorted :: Curry_Prelude.OP_List C_FDExpr -> Cover -> ConstStore
                             -> C_FDConstr
 external_d_C_prim_FD_sorted xs _ _ = FDSorted (fromCurry xs)
 
@@ -595,7 +595,7 @@ external_d_C_prim_FD_sorted xs _ _ = FDSorted (fromCurry xs)
 -- Access FD expression list
 -- -----------------------------------------------------------------------------
 
-external_d_C_prim_FD_at :: OP_List C_FDExpr -> C_FDExpr -> Cover -> ConstStore
+external_d_C_prim_FD_at :: Curry_Prelude.OP_List C_FDExpr -> C_FDExpr -> Cover -> ConstStore
                         -> C_FDExpr
 external_d_C_prim_FD_at xs e _ _ = FDAt (fromCurry xs) e
 
@@ -615,13 +615,13 @@ external_nd_C_prim_FD_loopall :: C_FDExpr -> C_FDExpr
 external_nd_C_prim_FD_loopall from to constr s cd cs
   = FDLoopAll from to (\e -> nd_apply constr e s cd cs)
 
-external_d_C_prim_FD_forall :: OP_List C_FDExpr
+external_d_C_prim_FD_forall :: Curry_Prelude.OP_List C_FDExpr
                             -> (C_FDExpr -> Cover -> ConstStore -> C_FDConstr)
                             -> Cover -> ConstStore -> C_FDConstr
 external_d_C_prim_FD_forall xs constr cd cs
   = FDForAll (fromCurry xs) (\e -> constr e cd cs)
 
-external_nd_C_prim_FD_forall :: OP_List C_FDExpr
+external_nd_C_prim_FD_forall :: Curry_Prelude.OP_List C_FDExpr
                               -> (Func C_FDExpr C_FDConstr) -> IDSupply -> Cover
                               -> ConstStore -> C_FDConstr
 external_nd_C_prim_FD_forall xs constr s cd cs
@@ -809,16 +809,16 @@ genDomConstr = do
       let dom = (asExpr l, asExpr u)
       return $ forall col (\v -> v @: dom)
 
-external_d_C_prim_solveFD :: OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
-                          -> OP_List (OP_List C_Int)
+external_d_C_prim_solveFD :: Curry_Prelude.OP_List C_Option -> C_FDConstr -> Cover -> ConstStore
+                          -> Curry_Prelude.OP_List (Curry_Prelude.OP_List C_Int)
 external_d_C_prim_solveFD opts constr _ _
   = let opts'     = getOpts $ fromCurry opts
         solutions = runSolver opts' constr []
     in toCurry solutions
 
-external_d_C_prim_solveFDVars :: OP_List C_Option -> C_FDConstr
-                              -> OP_List C_FDExpr -> Cover -> ConstStore
-                              -> OP_List (OP_List C_Int)
+external_d_C_prim_solveFDVars :: Curry_Prelude.OP_List C_Option -> C_FDConstr
+                              -> Curry_Prelude.OP_List C_FDExpr -> Cover -> ConstStore
+                              -> Curry_Prelude.OP_List (Curry_Prelude.OP_List C_Int)
 external_d_C_prim_solveFDVars opts constr lvars _ _
   = let opts'     = getOpts $ fromCurry opts
         solutions = runSolver opts' constr (fromCurry lvars)

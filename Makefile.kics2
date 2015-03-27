@@ -49,10 +49,10 @@ CABAL_LIBDEPS    = $(call comma_sep,$(LIBDEPS))
 .PHONY: install
 install: .curry/kics2/Curry_$(ALLLIBS).hs $(LIB_FCY) $(LIB_ACY) $(LIB_HS) $(LIB_HS_TRACE)
 	$(MAKE) $(CABAL_FILE)
-	$(CABAL_INSTALL) $(CABAL_PROFILE)
+	$(CABAL_INSTALL_GECODE) $(CABAL_PROFILE)
 	rm -f $(CABAL_FILE)
 	$(MAKE) $(CABAL_TRACE_FILE)
-	$(CABAL_INSTALL) $(CABAL_PROFILE)
+	$(CABAL_INSTALL_GECODE) $(CABAL_PROFILE)
 	rm -f $(CABAL_TRACE_FILE)
 
 # create a program importing all libraries in order to re-compile them
@@ -97,6 +97,12 @@ $(CABAL_FILE): ../Makefile Makefile
 	echo "Build-Type:     Simple"                                >> $@
 	echo "Cabal-Version:  >= 1.9.2"                              >> $@
 	echo ""                                                      >> $@
+	echo "Flag Gecode"                                           >> $@
+	echo "  Description:  Include Gecode Solver for finite"      >> $@
+	echo "                domain constraints. Requires a"        >> $@
+	echo "                working Gecode 3.1 installation"       >> $@
+	echo "  Default:      False"                                 >> $@
+	echo ""                                                      >> $@
 	echo "Library"                                               >> $@
 	echo "  Build-Depends:"                                      >> $@
 	echo "      kics2-runtime == $(VERSION)"                     >> $@
@@ -107,6 +113,9 @@ $(CABAL_FILE): ../Makefile Makefile
 	echo "    Build-Depends: unix"                               >> $@
 	echo "  Exposed-modules: $(HS_LIB_NAMES)"                    >> $@
 	echo "  hs-source-dirs: ./.curry/kics2, ./meta/.curry/kics2" >> $@
+	echo "  if flag(gecode)"                                     >> $@
+	echo "      Build-Depends: monadiccp-gecode"                 >> $@
+	echo "      CPP-Options:   -DGECODE"                         >> $@
 
 $(CABAL_TRACE_FILE): ../Makefile Makefile
 	echo "Name:           $(PACKAGE_TRACE)"                          > $@
@@ -118,6 +127,12 @@ $(CABAL_TRACE_FILE): ../Makefile Makefile
 	echo "Build-Type:     Simple"                                   >> $@
 	echo "Cabal-Version:  >= 1.9.2"                                 >> $@
 	echo ""                                                         >> $@
+	echo "Flag Gecode"                                              >> $@
+	echo "  Description:  Include Gecode Solver for finite"         >> $@
+	echo "                domain constraints. Requires a"           >> $@
+	echo "                working Gecode 3.1 installation"          >> $@
+	echo "  Default:      False"                                    >> $@
+	echo ""                                                         >> $@
 	echo "Library"                                                  >> $@
 	echo "  Build-Depends:"                                         >> $@
 	echo "      kics2-runtime == $(VERSION)"                        >> $@
@@ -128,6 +143,9 @@ $(CABAL_TRACE_FILE): ../Makefile Makefile
 	echo "    Build-Depends: unix"                                  >> $@
 	echo "  Exposed-modules: $(HS_LIB_TRACE_NAMES)"                 >> $@
 	echo "  hs-source-dirs: ./.curry/kics2, ./meta/.curry/kics2"    >> $@
+	echo "  if flag(gecode)"                                        >> $@
+	echo "      Build-Depends: monadiccp-gecode"                    >> $@
+	echo "      CPP-Options:   -DGECODE"                            >> $@
 
 # generate Haskell file in subdirectory .curry/kics2
 .curry/kics2/Curry_Trace_%.hs: %.curry
