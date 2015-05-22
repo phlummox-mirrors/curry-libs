@@ -14,9 +14,10 @@ module List
   , intersperse, intercalate, transpose, permutations, partition
   , group, groupBy, splitOn, split, inits, tails, replace
   , isPrefixOf, isSuffixOf, isInfixOf
-  , sortBy, insertBy, sort, insert
+  , sortBy, insertBy
+  , unionBy, intersectBy
   , last, init
-  , sum, product, maximum, minimum
+  , sum, product, maximum, minimum, maximumBy, minimumBy
   , scanl, scanl1, scanr, scanr1
   , mapAccumL, mapAccumR
   , cycle, unfoldr
@@ -83,11 +84,22 @@ union []     ys        = ys
 union (x:xs) ys        = if x `elem` ys then union xs ys
                                         else x : union xs ys
 
+--- Computes the union of two lists according to the given equivalence relation
+unionBy :: (a -> a -> Bool) -> [a] -> [a] -> [a]
+unionBy eq xs ys = xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
+
 --- Computes the intersection of two lists.
 intersect             :: Eq a => [a] -> [a] -> [a]
 intersect []     _     = []
 intersect (x:xs) ys    = if x `elem` ys then x : intersect xs ys
                                         else intersect xs ys
+
+--- Computes the intersection of two lists
+--- according to the given equivalence relation
+intersectBy :: (a -> a -> Bool) -> [a] -> [a] -> [a]
+intersectBy _  []       _        = []
+intersectBy _  (_:_)    []       = []
+intersectBy eq xs@(_:_) ys@(_:_) = [x | x <- xs, any (eq x) ys]
 
 --- Puts a separator element between all elements in a list.
 ---
@@ -269,9 +281,25 @@ product ns = foldl (*) 1 ns
 maximum :: Ord a => [a] -> a
 maximum xs@(_:_) =  foldl1 max xs
 
+--- Returns the maximum of a non-empty list
+--- according to the given comparison function
+maximumBy :: (a -> a -> Ordering) -> [a] -> a
+maximumBy cmp xs@(_:_) = foldl1 maxBy xs
+  where maxBy x y = case cmp x y of
+          GT -> x
+          _  -> y
+
 --- Returns the minimum of a non-empty list.
 minimum :: Ord a => [a] -> a
 minimum xs@(_:_) =  foldl1 max xs
+
+--- Returns the minimum of a non-empty list
+--- according to the given comparison function
+minimumBy :: (a -> a -> Ordering) -> [a] -> a
+minimumBy cmp xs@(_:_) = foldl1 minBy xs
+  where minBy x y = case cmp x y of
+          GT -> y
+          _  -> x
 
 --- `scanl` is similar to `foldl`, but returns a list of successive
 --- reduced values from the left:

@@ -172,6 +172,11 @@ A collection of operations on floating point numbers.
 A collection of utility operations for function application.
 </dd>
 
+<dt><code><a href="CDOC/FunctionInversion.html">FunctionInversion</a></code></dt>
+<dd>
+A collection of utility operations for inverting functions.
+</dd>
+
 <dt><code><a href="CDOC/Global.html">Global</a></code></dt>
 <dd>
 This library provides functionality for global entities.
@@ -481,6 +486,12 @@ here</a> for a description of this library.
 This library contains a definition for representing Curry programs
 in Curry and an I/O action to read Curry programs and
 transform them into this abstract representation.
+</dd>
+
+<dt><code><a href="CDOC/AbstractCurryGoodies.html">AbstractCurryGoodies</a></code></dt>
+<dd>
+This library provides some useful functions to write programs
+that generate AbstractCurry programs more compact and readable.
 </dd>
 
 <dt><code><a href="CDOC/AbstractCurryPrinter.html">AbstractCurryPrinter</a></code></dt>

@@ -11,8 +11,8 @@
 --- Assumption: an abstract Curry program is stored in file with
 --- extension .acy
 ---
---- @author Michael Hanus, Bjoern Peemoeller
---- @version November 2014
+--- @author Michael Hanus, Björn Peemöller
+--- @version November 2015
 -- ---------------------------------------------------------------------------
 
 {-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
@@ -30,50 +30,51 @@ import FilePath     ((<.>))
 -- Definition of data types for representing abstract Curry programs:
 -- ---------------------------------------------------------------------------
 
---- Data type for representing a Curry module in the intermediate form.
---- A value of this data type has the form
---- <CODE>
----  (CProg modname imports typedecls functions opdecls)
---- </CODE>
---- where modname: name of this module,
----       imports: list of modules names that are imported,
----       typedecls, opdecls, functions: see below
-data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
-  deriving Eq
+--- Current version of AbstractCurry
+version :: String
+version = "AbstractCurry 1.0"
 
+--- A module name.
+type MName = String
 
 --- The data type for representing qualified names.
 --- In AbstractCurry all names are qualified to avoid name clashes.
 --- The first component is the module name and the second component the
 --- unqualified name as it occurs in the source program.
-type QName = (String,String)
-
+type QName = (MName, String)
 
 --- Data type to specify the visibility of various entities.
-data CVisibility = Public    -- exported entity
-                 | Private   -- private entity
+data CVisibility
+  = Public    -- exported entity
+  | Private   -- private entity
   deriving (Eq,Show)
 
 
---- The data type for representing type variables.
---- They are represented by (i,n) where i is a type variable index
---- which is unique inside a function and n is a name (if possible,
---- the name written in the source program).
-type CTVarIName = (Int,String)
+--- Data type for representing a Curry module in the intermediate form.
+--- A value of this data type has the form
+--- 
+---     (CProg modname imports typedecls functions opdecls)
+--- 
+--- where modname: name of this module,
+---       imports: list of modules names that are imported,
+---       typedecls: Type declarations
+---       functions: Function declarations
+---       opdecls: Operator precedence declarations
+data CurryProg = CurryProg MName [MName] [CTypeDecl] [CFuncDecl] [COpDecl]
+  deriving Eq
 
 --- Data type for representing definitions of algebraic data types
 --- and type synonyms.
 ---
 --- A data type definition of the form
 ---
---- <code>data t x1...xn = ...| c t1....tkc |...</code>
+---     data t x1...xn = ...| c t1....tkc |...
 ---
 --- is represented by the Curry term
 ---
---- <code>(CType t v [i1,...,in] [...(CCons c kc v [t1,...,tkc])...])</code>
+---     (CType t v [i1,...,in] [...(CCons c kc v [t1,...,tkc])...])
 ---
---- where each <code>ij</code> is the index of the type variable
---- <code> xj</code>.
+--- where each `ij` is the index of the type variable `xj`.
 ---
 --- Note: the type variable indices are unique inside each type declaration
 ---       and are usually numbered from 0
@@ -83,16 +84,27 @@ type CTVarIName = (Int,String)
 data CTypeDecl
   = CType    QName CVisibility [CTVarIName] [CConsDecl]
   | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
+  | CNewType QName CVisibility [CTVarIName] CConsDecl
   deriving Eq
 
+--- The type for representing type variables.
+--- They are represented by (i,n) where i is a type variable index
+--- which is unique inside a function and n is a name (if possible,
+--- the name written in the source program).
+type CTVarIName = (Int, String)
 
---- A constructor declaration consists of the name and arity of the
+--- A constructor declaration consists of the name of the
 --- constructor and a list of the argument types of the constructor.
-data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
-  deriving Eq
+--- The arity equals the number of types.
+data CConsDecl
+  = CCons   QName CVisibility [CTypeExpr]
+  | CRecord QName CVisibility [CFieldDecl]
 
+--- A record field declaration consists of the name of the
+--- the label, the visibility and its corresponding type.
+data CFieldDecl = CField QName CVisibility CTypeExpr
 
---- Data type for type expressions.
+--- Type expression.
 --- A type expression is either a type variable, a function type,
 --- or a type constructor application.
 ---
@@ -104,14 +116,10 @@ data CTypeExpr
   | CFuncType CTypeExpr CTypeExpr  -- function type t1->t2
   | CTCons QName [CTypeExpr]       -- type constructor application
                                    -- (CTCons (module,name) arguments)
-  | CRecordType [CField CTypeExpr] (Maybe CTVarIName) -- Record type (extended Curry)
   deriving (Eq,Show)
 
 --- Labeled record fields
-type CField a = (CLabel, a)
-
---- Identifiers for record labels (extended syntax).
-type CLabel = String
+type CField a = (QName, a)
 
 --- Data type for operator declarations.
 --- An operator declaration "fix p n" in Curry corresponds to the
@@ -126,12 +134,8 @@ data CFixity
   | CInfixrOp  -- right-associative infix operator
   deriving (Eq, Show)
 
-
---- Data types for representing object variables.
---- Object variables occurring in expressions are represented by (Var i)
---- where i is a variable index.
-type CVarIName = (Int,String)
-
+--- Function arity
+type Arity = Int
 
 --- Data type for representing function declarations.
 ---
@@ -144,10 +148,6 @@ type CVarIName = (Int,String)
 ---
 --- Note: the variable indices are unique inside each rule
 ---
---- External functions are represented as
---- <code>(CFunc name arity type (CExternal s))</code>
---- where s is the external name associated to this function.
----
 --- Thus, a function declaration consists of the name, arity, type, and
 --- a list of rules.
 ---
@@ -157,8 +157,8 @@ type CVarIName = (Int,String)
 --- by pretty printers that generate a readable Curry program
 --- containing documentation comments.
 data CFuncDecl
-  = CFunc QName Int CVisibility CTypeExpr CRules
-  | CmtFunc String QName Int CVisibility CTypeExpr CRules
+  = CFunc QName Arity CVisibility CTypeExpr CRules
+  | CmtFunc String QName Arity CVisibility CTypeExpr CRules
   deriving (Eq,Show)
 
 --- A rule is either a list of formal parameters together with an expression
@@ -177,34 +177,44 @@ data CEvalAnnot
   | CChoice
   deriving (Eq,Show)
 
---- The most general form of a rule. It consists of a list of patterns
---- (left-hand side), a list of guards ("success" if not present in the
---- source text) with their corresponding right-hand sides, and
+--- The general form of a function rule. It consists of a list of patterns
+--- (left-hand side) and the right-hand side for these patterns.
+data CRule = CRule [CPattern] CRhs
+
+--- Right-hand-side of a 'CRule' or a `case` expression.
+--- It is either a simple unconditional right-hand side or
+--- a list of guards with their corresponding right-hand sides, and
 --- a list of local declarations.
-data CRule = CRule [CPattern] [(CExpr,CExpr)] [CLocalDecl]
-  deriving (Eq,Show)
+data CRhs
+  = CSimpleRhs  CExpr            [CLocalDecl] -- expr where decls
+  | CGuardedRhs [(CExpr, CExpr)] [CLocalDecl] -- | cond = expr where decl
 
 --- Data type for representing local (let/where) declarations
 data CLocalDecl
-  = CLocalFunc CFuncDecl                   -- local function declaration
-  | CLocalPat  CPattern CExpr [CLocalDecl] -- local pattern declaration
-  | CLocalVar  CVarIName                   -- local free variable declaration
+  = CLocalFunc CFuncDecl     -- local function declaration
+  | CLocalPat  CPattern CRhs -- local pattern declaration
+  | CLocalVars [CVarIName]   -- local free variable declaration
   deriving (Eq,Show)
+
+--- Data types for representing object variables.
+--- Object variables occurring in expressions are represented by (Var i)
+--- where i is a variable index.
+type CVarIName = (Int,String)
 
 --- Data type for representing Curry expressions.
 data CExpr
- = CVar      CVarIName              -- variable (unique index / name)
- | CLit      CLiteral               -- literal (Integer/Float/Char constant)
- | CSymbol   QName                  -- a defined symbol with module and name
- | CApply    CExpr CExpr            -- application (e1 e2)
- | CLambda   [CPattern] CExpr       -- lambda abstraction
- | CLetDecl  [CLocalDecl] CExpr     -- local let declarations
- | CDoExpr   [CStatement]           -- do expression
- | CListComp CExpr [CStatement]     -- list comprehension
- | CCase     CExpr [CBranchExpr]    -- case expression
- | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
- | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
- | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
+ = CVar       CVarIName                          -- variable (unique index / name)
+ | CLit       CLiteral                           -- literal (Integer/Float/Char constant)
+ | CSymbol    QName                              -- a defined symbol with module and name
+ | CApply     CExpr CExpr                        -- application (e1 e2)
+ | CLambda    [CPattern] CExpr                   -- lambda abstraction
+ | CLetDecl   [CLocalDecl] CExpr                 -- local let declarations
+ | CDoExpr    [CStatement]                       -- do expression
+ | CListComp  CExpr [CStatement]                 -- list comprehension
+ | CCase      CCaseType CExpr [(CPattern, CRhs)] -- case expression
+ | CTyped     CExpr CTypeExpr                    -- typed expression
+ | CRecConstr QName [CField CExpr]               -- record construction (extended Curry)
+ | CRecUpdate CExpr [CField CExpr]               -- record update (extended Curry)
   deriving (Eq,Show)
 
 --- Data type for representing statements in do expressions and
@@ -217,20 +227,14 @@ data CStatement
 
 --- Data type for representing pattern expressions.
 data CPattern
-  = CPVar CVarIName               -- pattern variable (unique index / name)
-  | CPLit CLiteral                -- literal (Integer/Float/Char constant)
-  | CPComb QName [CPattern]       -- application (m.c e1 ... en) of n-ary
-                                  -- constructor m.c (CPComb (m,c) [e1,...,en])
-  | CPAs       CVarIName CPattern -- as-pattern (extended Curry)
-  | CPFuncComb QName [CPattern]   -- function pattern (extended Curry)
-  | CPLazy CPattern               -- lazy pattern (extended Curry)
-  | CPRecord [CField CPattern] (Maybe CPattern) -- record pattern (extended curry)
-  deriving (Eq,Show)
-
---- Data type for representing branches in case expressions.
-data CBranchExpr
-  = CBranch CPattern CExpr
-  | CGuardedBranch CPattern [(CExpr, CExpr)]
+  = CPVar      CVarIName               -- pattern variable (unique index / name)
+  | CPLit      CLiteral                -- literal (Integer/Float/Char constant)
+  | CPComb     QName [CPattern]        -- application (m.c e1 ... en) of n-ary
+                                       -- constructor m.c (CPComb (m,c) [e1,...,en])
+  | CPAs       CVarIName CPattern      -- as-pattern (extended Curry)
+  | CPFuncComb QName [CPattern]        -- function pattern (extended Curry)
+  | CPLazy     CPattern                -- lazy pattern (extended Curry)
+  | CPRecord   QName [CField CPattern] -- record pattern (extended Curry)
   deriving (Eq,Show)
 
 --- Data type for representing literals occurring in an expression.
@@ -239,7 +243,20 @@ data CLiteral
   = CIntc   Int
   | CFloatc Float
   | CCharc  Char
+  | CStringc String
   deriving (Eq,Show)
+
+--- Data type for representing statements in do expressions and
+--- list comprehensions.
+data CStatement
+  = CSExpr CExpr         -- an expression (I/O action or boolean)
+  | CSPat CPattern CExpr -- a pattern definition
+  | CSLet [CLocalDecl]   -- a local let declaration
+
+--- Type of case expressions
+data CCaseType
+  = CRigid -- rigid case expression
+  | CFlex  -- flexible case expression
 
 -- ---------------------------------------------------------------------------
 
@@ -321,7 +338,10 @@ readAbstractCurryFile filename = do
  where
    readExistingACY fname = do
      filecontents <- readFile fname
-     return (readUnqualifiedTerm ["AbstractCurry","Prelude"] filecontents)
+     let (line1,lines) = break (=='\n') filecontents
+     if line1 == "{- "++version++" -}"
+      then return (readUnqualifiedTerm ["AbstractCurry","Prelude"] lines)
+      else error $ "AbstractCurry: incompatible file found: "++fname
 
 --- Tries to read an AbstractCurry file and returns
 ---
@@ -341,12 +361,15 @@ tryReadACYFile fn = do
  where
   tryRead file = do
     src <- readFile file
-    case readsUnqualifiedTerm ["AbstractCurry","Prelude"] src of
-      []       -> cancel
-      [(p,tl)] -> if all isSpace tl
-                    then return $ Just p
-                    else cancel
-      _        -> cancel
+    let (line1,lines) = break (=='\n') src
+    if line1 /= "{- "++version++" -}"
+      then error $ "AbstractCurry: incompatible file found: "++fn
+      else case readsUnqualifiedTerm ["AbstractCurry","Prelude"] lines of
+        []       -> cancel
+        [(p,tl)] -> if all isSpace tl
+                      then return $ Just p
+                      else cancel
+        _        -> cancel
   cancel = return Nothing
 
 --- Writes an AbstractCurry program into a file in ".acy" format.
