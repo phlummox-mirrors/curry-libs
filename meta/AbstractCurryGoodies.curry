@@ -90,13 +90,13 @@ typeCons (CNewType _ _ _ c ) = [c]
 
 --- Returns the name of a given function declaration
 funcName :: CFuncDecl -> QName
-funcName (CFunc     n _ _ _ _) = n
-funcName (CmtFunc _ n _ _ _ _) = n
+funcName (CFunc     n _ _ _ _ _) = n
+funcName (CmtFunc _ n _ _ _ _  ) = n
 
 --- Returns the visibility of a given function declaration
 funcVis :: CFuncDecl -> CVisibility
-funcVis (CFunc     _ _ vis _ _) = vis
-funcVis (CmtFunc _ _ _ vis _ _) = vis
+funcVis (CFunc     _ _ vis _ _ _) = vis
+funcVis (CmtFunc _ _ _ vis _ _  ) = vis
 
 --- Returns the name of a given constructor declaration
 consName :: CConsDecl -> QName
@@ -170,7 +170,7 @@ modsOfType (CTCons (mod,_) tys) = foldr union [mod] $ map modsOfType tys
 
 --- Constructs a function declaration from a given qualified function name,
 --- arity, visibility, type expression and list of defining rules.
-cfunc :: QName -> Int -> CVisibility -> CTypeExpr -> [CRule] -> CFuncDecl
+cfunc :: QName -> Int -> CVisibility -> CContext -> CTypeExpr -> [CRule] -> CFuncDecl
 cfunc = CFunc
 
 --- Constructs a function declaration from a given comment,

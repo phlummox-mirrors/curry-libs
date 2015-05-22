@@ -60,8 +60,76 @@ data CVisibility
 ---       typedecls: Type declarations
 ---       functions: Function declarations
 ---       opdecls: Operator precedence declarations
-data CurryProg = CurryProg MName [MName] [CTypeDecl] [CFuncDecl] [COpDecl]
-  deriving Eq
+data CurryProg = CurryProg MName [MName] [CTypeDecl] [CTypeClassDecl] [CFuncDecl] [COpDecl]
+  deriving (Eq,Show)
+
+-- |This data type represents both: type class declarations and
+--   type class instances. A value of this type can have the following
+--   two forms
+--
+--  @CClassDecl className visibility superClasses typeVars methods@
+--
+--  where
+--
+--  [@className@]    Name of the declared class
+--
+--  [@visibility$]
+--
+--  [@superClasses@] List of super classes
+--
+--  [@typeVars@]     List of type variables
+--
+--  [@methods@]      List of class methods as well as default implementations;
+--                    the former is represented as @CFuncDecl@ without any rules
+--
+--  Example: @
+--            -- New type class declaration with artificial dependencies
+--            class (Eq a, Enum a) => NewTypeClass a where
+--              -- method with default implementation
+--              identity :: a -> a
+--              identity = id
+--
+--              -- ordinary class method
+--              toggle   :: a -> a
+--           @
+--
+--  @CInstanceDecl className contexts typeConstructor methods@
+--
+--  where
+--
+--  [@className@]       Name of the class corresponding to instance declaration
+--
+--  [@visibility$]
+--
+--  [@contexts@]        List of super classes
+--
+--  [@typeConstructor@] Type constructor of given instance declaration
+--
+--  [@methods@]         Implementation of class methods
+--
+--  Example: @
+--            -- The NewTypeClass instance for Bool adopts the default
+--                implementation for the identity method
+--            instance (Eq a, Enum a) => NewTypeClass Bool where
+--              toggle   x = not x
+--           @
+--
+data CTypeClassDecl
+  = CClassDecl    QName CVisibility CContext [CTVarIName] [CFuncDecl]
+  | CInstanceDecl QName             CContext CTypeExpr    [CFuncDecl]
+  deriving (Eq, Show)
+
+-- |Representation of a type class context for type signatures,
+--   class declarations and class instances
+--
+--  Example: @(Eq a, Enum a)@ corresponds to
+--            @
+--             [ ( ("Prelude","Eq")  ,[(0,"a")] )
+--             , ( ("Prelude","Enum"),[(0,"a")] )
+--             ]
+--            @
+data CContext = CContext [(QName,[CTVarIName])]
+  deriving (Eq, Show)
 
 --- Data type for representing definitions of algebraic data types
 --- and type synonyms.
@@ -85,7 +153,7 @@ data CTypeDecl
   = CType    QName CVisibility [CTVarIName] [CConsDecl]
   | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
   | CNewType QName CVisibility [CTVarIName] CConsDecl
-  deriving Eq
+  deriving (Eq,Show)
 
 --- The type for representing type variables.
 --- They are represented by (i,n) where i is a type variable index
@@ -99,10 +167,12 @@ type CTVarIName = (Int, String)
 data CConsDecl
   = CCons   QName CVisibility [CTypeExpr]
   | CRecord QName CVisibility [CFieldDecl]
+  deriving (Eq,Show)
 
 --- A record field declaration consists of the name of the
 --- the label, the visibility and its corresponding type.
 data CFieldDecl = CField QName CVisibility CTypeExpr
+  deriving (Eq,Show)
 
 --- Type expression.
 --- A type expression is either a type variable, a function type,
@@ -125,7 +195,7 @@ type CField a = (QName, a)
 --- An operator declaration "fix p n" in Curry corresponds to the
 --- AbstractCurry term (COp n fix p).
 data COpDecl = COp QName CFixity Int
-  deriving Eq
+  deriving (Eq,Show)
 
 --- Data type for operator associativity
 data CFixity
@@ -157,29 +227,14 @@ type Arity = Int
 --- by pretty printers that generate a readable Curry program
 --- containing documentation comments.
 data CFuncDecl
-  = CFunc QName Arity CVisibility CTypeExpr CRules
-  | CmtFunc String QName Arity CVisibility CTypeExpr CRules
-  deriving (Eq,Show)
-
---- A rule is either a list of formal parameters together with an expression
---- (i.e., a rule in flat form), a list of general program rules with
---- an evaluation annotation, or it is externally defined
-data CRules
-  = CRules CEvalAnnot [CRule]
-  | CExternal String
-  deriving (Eq,Show)
-
---- Data type for classifying evaluation annotations for functions.
---- They can be either flexible (default), rigid, or choice.
-data CEvalAnnot
-  = CFlex
-  | CRigid
-  | CChoice
+  = CFunc QName Arity CVisibility CContext CTypeExpr [CRule]
+  | CmtFunc String QName Arity CVisibility CTypeExpr [CRule]
   deriving (Eq,Show)
 
 --- The general form of a function rule. It consists of a list of patterns
 --- (left-hand side) and the right-hand side for these patterns.
 data CRule = CRule [CPattern] CRhs
+  deriving (Eq,Show)
 
 --- Right-hand-side of a 'CRule' or a `case` expression.
 --- It is either a simple unconditional right-hand side or
@@ -188,6 +243,7 @@ data CRule = CRule [CPattern] CRhs
 data CRhs
   = CSimpleRhs  CExpr            [CLocalDecl] -- expr where decls
   | CGuardedRhs [(CExpr, CExpr)] [CLocalDecl] -- | cond = expr where decl
+  deriving (Eq,Show)
 
 --- Data type for representing local (let/where) declarations
 data CLocalDecl
@@ -246,17 +302,11 @@ data CLiteral
   | CStringc String
   deriving (Eq,Show)
 
---- Data type for representing statements in do expressions and
---- list comprehensions.
-data CStatement
-  = CSExpr CExpr         -- an expression (I/O action or boolean)
-  | CSPat CPattern CExpr -- a pattern definition
-  | CSLet [CLocalDecl]   -- a local let declaration
-
 --- Type of case expressions
 data CCaseType
   = CRigid -- rigid case expression
   | CFlex  -- flexible case expression
+  deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------------
 
